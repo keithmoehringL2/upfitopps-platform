@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/styles.css">
+<script src="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<style>
+body{margin:0;background:#fff}
+a{color:var(--color-accent-700)}
+a:hover{color:var(--color-accent-800)}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; font-family:var(--font-body); color:var(--color-text); background:var(--color-bg)">
+
+  <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:10px 48px; font-size:13px; color:var(--color-neutral-700); box-shadow:0 1px 0 var(--color-divider)">
+    <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase">Prototype · Phase 2 · Distributor Manager</span>
+    <div style="display:flex; gap:4px; flex-wrap:wrap">
+      <sc-for list="{{ jumps }}" as="j" hint-placeholder-count="6">
+        <div onClick="{{ j.go }}" class="btn btn-ghost" style="font-size:13px; font-weight:400; padding:4px 8px">{{ j.label }}</div>
+      </sc-for>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:14px; align-items:center">
+      <a href="Upfit Opps Rep Mobile.dc.html" style="font-size:13px">Sales Rep →</a>
+      <a href="Upfit Opps Manufacturer.dc.html" style="font-size:13px">Manufacturer →</a>
+      <a href="Upfit Opps Admin.dc.html" style="font-size:13px">L2 Admin →</a>
+      <div onClick="{{ reset }}" class="btn btn-ghost" style="font-size:13px; font-weight:400; padding:4px 8px"><i class="ph-duotone ph-arrow-counter-clockwise"></i><span>Reset</span></div>
+    </div>
+  </div>
+
+  <!-- 04 LOGIN -->
+  <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+    <div style="min-height:calc(100vh - 46px); display:grid; place-items:center; padding:48px 24px">
+      <div style="width:min(400px,100%); display:flex; flex-direction:column; gap:28px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:22px; font-weight:600; color:#c8102e">Upfit Opps</span>
+          <h1 style="margin:0; font-size:34px">{{ loginTitle }}</h1>
+          <span style="font-size:15px; color:var(--color-neutral-700)">{{ loginSub }}</span>
+        </div>
+        <sc-if value="{{ modeSignin }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <div class="field"><label>Username or email</label><input class="input" value="{{ login.user }}" onChange="{{ onUser }}" style="min-height:46px; font-size:16px"><span style="font-size:12px; color:var(--color-accent-2-700)">{{ login.errUser }}</span></div>
+            <div class="field"><label>Password</label><input class="input" type="password" value="{{ login.pass }}" onChange="{{ onPass }}" onKeyDown="{{ onPassKey }}" placeholder="Any password works in this demo" style="min-height:46px; font-size:16px"><span style="font-size:12px; color:var(--color-accent-2-700)">{{ login.errPass }}</span></div>
+            <button onClick="{{ signIn }}" class="btn btn-primary" style="min-height:50px; font-size:16px; background:#c8102e">Sign in</button>
+            <div onClick="{{ toRecover }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; color:var(--color-accent-700)">Forgot password?</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ modeRecover }}">
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <div class="field"><label>Account email</label><input class="input" value="{{ login.rec }}" onChange="{{ onRec }}" style="min-height:46px; font-size:16px"><span style="font-size:12px; color:var(--color-accent-2-700)">{{ login.errRec }}</span></div>
+            <button onClick="{{ sendReset }}" class="btn btn-primary" style="min-height:50px; font-size:16px; background:#c8102e">Send reset link</button>
+            <div onClick="{{ toSignin }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; color:var(--color-accent-700)"><i class="ph-duotone ph-caret-left"></i><span>Back to sign in</span></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ modeSent }}">
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <p style="margin:0; font-size:16px; line-height:1.5">If an account exists for <strong>{{ login.rec }}</strong>, a reset link is on its way. It expires in 30 minutes.</p>
+            <div onClick="{{ toSignin }}" class="btn btn-secondary" style="align-self:flex-start; min-height:44px">Back to sign in</div>
+          </div>
+        </sc-if>
+        <span style="font-size:12px; color:var(--color-neutral-700)">Sales reps don't need a password. They sign in from their daily email.</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isApp }}">
+    <header style="display:flex; align-items:center; gap:40px; padding:20px 48px; box-shadow:0 1px 0 var(--color-divider)">
+      <div style="display:flex; align-items:baseline; gap:10px">
+        <span style="font-size:22px; font-weight:600; color:var(--color-accent)">{{ brandName }}</span>
+        <span style="font-size:13px; color:var(--color-neutral-700)">Manager</span>
+      </div>
+      <nav style="display:flex; gap:28px">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="2">
+          <div onClick="{{ n.go }}" style="cursor:pointer; font-size:16px; padding:6px 0; color:{{ n.color }}; box-shadow:{{ n.line }}" style-hover="color:var(--color-accent-700)">{{ n.label }}</div>
+        </sc-for>
+      </nav>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+        <span style="font-size:14px">Lisa Chen</span>
+        <div onClick="{{ goSettings }}" class="btn btn-secondary btn-icon" title="Manager settings" style="width:42px; height:42px; background:{{ gearBg }}"><i class="ph-duotone ph-gear-six" style="font-size:22px"></i></div>
+        <div onClick="{{ signOut }}" class="btn btn-ghost" style="font-weight:400">Sign out</div>
+      </div>
+    </header>
+
+    <main style="max-width:1320px; padding:44px 48px 120px; display:flex; flex-direction:column; gap:48px">
+
+      <!-- 05 OVERVIEW -->
+      <sc-if value="{{ isOverview }}">
+        <div style="display:flex; flex-direction:column; gap:52px">
+          <div style="display:flex; flex-direction:column; gap:18px">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap">
+              <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-funnel" style="font-size:26px"></i><span>Lead breakdown</span></h3>
+              <span style="font-size:13px; color:var(--color-neutral-700)">All cold prospects to date · percentages of total cold prospects</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:28px">
+              <sc-for list="{{ leadFunnel }}" as="l" hint-placeholder-count="5">
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ l.label }}</span>
+                  <div style="display:flex; align-items:baseline; gap:10px">
+                    <span style="font-size:44px; font-weight:600; line-height:1; letter-spacing:-.02em">{{ l.value }}</span>
+                    <span style="font-size:18px; font-weight:600; color:var(--color-accent-700)">{{ l.pct }}</span>
+                  </div>
+                  <div style="height:8px; background:var(--color-neutral-100); border-radius:var(--radius-md)"><div style="height:100%; width:{{ l.w }}; background:var(--color-accent); border-radius:var(--radius-md); transition:width .4s"></div></div>
+                  <span style="font-size:13px; color:var(--color-neutral-800)">{{ l.sub }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap">
+            <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-chart-line-up" style="font-size:26px"></i><span>Team performance</span></h3>
+            <div class="seg">
+              <sc-for list="{{ periods }}" as="p" hint-placeholder-count="4">
+                <label class="seg-opt" style="padding:9px 16px; font-size:14px"><input type="radio" name="period" checked="{{ p.on }}" onChange="{{ p.pick }}">{{ p.label }}</label>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:36px 32px">
+            <sc-for list="{{ totals }}" as="t" hint-placeholder-count="5">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ t.label }}</span>
+                <span style="font-size:48px; font-weight:600; line-height:1; letter-spacing:-.02em">{{ t.value }}</span>
+                <span style="font-size:14px; color:var(--color-neutral-800)">{{ t.sub }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:22px">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap">
+              <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-chart-bar-horizontal" style="font-size:26px"></i><span>By rep</span></h3>
+              <div class="seg">
+                <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="5">
+                  <label class="seg-opt" style="padding:8px 14px; font-size:14px"><input type="radio" name="metric" checked="{{ m.on }}" onChange="{{ m.pick }}">{{ m.label }}</label>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <sc-for list="{{ bars }}" as="b" hint-placeholder-count="5">
+                <div onClick="{{ b.open }}" style="cursor:pointer; display:grid; grid-template-columns:170px minmax(0,1fr) 84px; gap:18px; align-items:center; padding:4px 0" style-hover="color:var(--color-accent-700)">
+                  <span style="font-size:16px">{{ b.name }}</span>
+                  <div style="position:relative; height:28px; background:var(--color-neutral-100); border-radius:var(--radius-md)">
+                    <div style="height:100%; width:{{ b.w }}; background:var(--color-accent); border-radius:var(--radius-md); transition:width .4s"></div>
+                    <sc-if value="{{ b.hasMark }}"><div style="position:absolute; top:-5px; bottom:-5px; left:{{ b.mark }}; width:2px; background:var(--color-text)"></div></sc-if>
+                  </div>
+                  <span style="text-align:right; font-size:18px; font-weight:600">{{ b.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <span style="font-size:13px; color:var(--color-neutral-700)">{{ chartNote }}</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:18px">
+            <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-users-three" style="font-size:26px"></i><span>Rep performance</span></h3>
+            <div style="overflow-x:auto">
+              <table class="table" style="font-size:15px; min-width:980px">
+                <thead><tr><th>Rep</th><th style="text-align:right">Daily target</th><th style="text-align:right">Attempts</th><th style="text-align:right">Target attainment</th><th style="text-align:right">DMs identified</th><th style="text-align:right">DM conversations</th><th style="text-align:right">Opportunities</th><th style="text-align:right">Companies quoted</th><th style="text-align:right">Opp yield</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ repRowsPerf }}" as="r" hint-placeholder-count="5">
+                    <tr onClick="{{ r.open }}" style="cursor:pointer">
+                      <td style="padding:14px 10px"><div style="display:flex; flex-direction:column"><span style="font-weight:600">{{ r.name }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ r.status }}</span></div></td>
+                      <td style="text-align:right">{{ r.target }}</td><td style="text-align:right">{{ r.a }}</td><td style="text-align:right">{{ r.pct }}</td><td style="text-align:right">{{ r.pdm }}</td><td style="text-align:right">{{ r.dm }}</td><td style="text-align:right">{{ r.opp }}</td><td style="text-align:right">{{ r.q }}</td><td style="text-align:right">{{ r.yield }}</td>
+                    </tr>
+                  </sc-for>
+                  <tr style="font-weight:600">
+                    <td style="padding:14px 10px">Team</td><td style="text-align:right">{{ team.target }}</td><td style="text-align:right">{{ team.a }}</td><td style="text-align:right">{{ team.pct }}</td><td style="text-align:right">{{ team.pdm }}</td><td style="text-align:right">{{ team.dm }}</td><td style="text-align:right">{{ team.opp }}</td><td style="text-align:right">{{ team.q }}</td><td style="text-align:right">{{ team.yield }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <span style="font-size:13px; color:var(--color-neutral-700)">Counts are unique companies except Attempts. Target attainment = recorded cold attempts ÷ (daily target × working days). Opp yield = opportunities ÷ decision-maker conversations. Activity reflects what reps recorded. Click a rep to see their companies.</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- COMPANIES -->
+      <sc-if value="{{ isCompanies }}">
+        <div style="display:flex; flex-direction:column; gap:28px">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap">
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:13px; color:var(--color-neutral-700)">{{ repoCount }}</span>
+              <h1 style="margin:0">Companies</h1>
+            </div>
+            <div onClick="{{ showUnassigned }}" class="btn btn-secondary" style="min-height:44px"><i class="ph-duotone ph-user-circle-dashed"></i><span>{{ unassignedLabel }}</span></div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px">
+            <div class="field" style="grid-column:span 2"><label>Search</label><input class="input" value="{{ f.q }}" onChange="{{ onQ }}" placeholder="Company name" style="min-height:44px"></div>
+            <div class="field"><label>ZIP</label><input class="input" value="{{ f.zip }}" onChange="{{ onZip }}" inputMode="numeric" maxLength="5" placeholder="Any" style="min-height:44px"></div>
+            <div class="field"><label>Owner</label>
+              <select class="input" value="{{ f.owner }}" onChange="{{ onOwner }}" style="min-height:44px">
+                <option value="">Anyone</option><option value="none">Unassigned</option>
+                <sc-for list="{{ repOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+              </select>
+            </div>
+            <div class="field"><label>Status</label>
+              <select class="input" value="{{ f.status }}" onChange="{{ onStatus }}" style="min-height:44px">
+                <option value="">Any status</option><option value="cold">Cold prospect</option><option value="customer">Existing customer</option><option value="opp">Opportunity</option><option value="removed">Removed from outreach</option><option value="dnc">Do not contact</option>
+              </select>
+            </div>
+            <div class="field"><label>Industry</label>
+              <select class="input" value="{{ f.ind }}" onChange="{{ onInd }}" style="min-height:44px">
+                <option value="">Any industry</option>
+                <sc-for list="{{ indOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o }}">{{ o }}</option></sc-for>
+              </select>
+            </div>
+            <div class="field"><label>Source</label>
+              <select class="input" value="{{ f.src }}" onChange="{{ onSrc }}" style="min-height:44px">
+                <option value="">Any source</option><option value="as">Adrian Steel VIO</option><option value="tc">Customer list</option>
+              </select>
+            </div>
+            <div class="field"><label>Priority</label>
+              <select class="input" value="{{ f.pri }}" onChange="{{ onPri }}" style="min-height:44px">
+                <option value="">Any</option><option value="hi">4.0 and up</option><option value="mid">3.0–3.9</option><option value="lo">Under 3.0</option>
+              </select>
+            </div>
+            <div class="field"><label>Sort by</label>
+              <select class="input" value="{{ f.sort }}" onChange="{{ onSort }}" style="min-height:44px">
+                <option value="pri">Priority</option><option value="name">Company name</option><option value="last">Last outreach</option><option value="zip">ZIP</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:60px; padding:10px 16px; border-radius:var(--radius-md); background:{{ bulkBg }}">
+            <sc-if value="{{ hasSel }}">
+              <span style="font-size:15px; font-weight:600">{{ selLabel }}</span>
+              <span style="font-size:14px">Assign to</span>
+              <select class="input" value="{{ assignTo }}" onChange="{{ onAssignTo }}" style="width:200px; min-height:40px; background:var(--color-bg)">
+                <sc-for list="{{ activeRepOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+              </select>
+              <div onClick="{{ applyAssign }}" class="btn btn-primary" style="min-height:40px">Assign</div>
+              <div onClick="{{ applyUnassign }}" class="btn btn-secondary" style="min-height:40px; background:var(--color-bg)">Unassign</div>
+              <div onClick="{{ clearSel }}" class="btn btn-ghost" style="margin-left:auto">Clear selection</div>
+            </sc-if>
+            <sc-if value="{{ noSel }}">
+              <span style="font-size:14px; color:var(--color-neutral-800)">{{ filteredLabel }}</span>
+              <div onClick="{{ selectAllFiltered }}" class="btn btn-ghost">Select all {{ filteredCount }}</div>
+              <sc-if value="{{ hasFilters }}"><div onClick="{{ clearFilters }}" class="btn btn-ghost" style="margin-left:auto"><i class="ph-duotone ph-x"></i><span>Clear filters</span></div></sc-if>
+            </sc-if>
+          </div>
+
+          <div style="overflow-x:auto">
+            <table class="table" style="font-size:15px; min-width:1040px">
+              <thead><tr>
+                <th style="width:36px"><input type="checkbox" checked="{{ allSel }}" onChange="{{ toggleAll }}" style="width:18px; height:18px; accent-color:var(--color-accent)"></th>
+                <th>Company</th><th style="text-align:right">Priority</th><th>Owner</th><th>Status</th><th>Industry</th><th>ZIP</th><th>Last outreach</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+                  <tr style="background:{{ r.bg }}">
+                    <td><input type="checkbox" checked="{{ r.sel }}" onChange="{{ r.toggle }}" style="width:18px; height:18px; accent-color:var(--color-accent)"></td>
+                    <td style="padding:12px 10px"><div style="display:flex; flex-direction:column; gap:1px"><span onClick="{{ r.open }}" style="cursor:pointer; font-weight:600; color:var(--color-accent-700)" style-hover="text-decoration:underline">{{ r.name }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ r.city }}</span></div></td>
+                    <td style="text-align:right; font-weight:600">{{ r.score }}</td>
+                    <td style="color:{{ r.ownerColor }}">{{ r.owner }}</td>
+                    <td><span class="tag {{ r.stClass }}">{{ r.st }}</span></td>
+                    <td>{{ r.ind }}</td><td>{{ r.zip }}</td>
+                    <td style="font-size:14px; color:var(--color-neutral-800)">{{ r.last }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{ noRows }}"><p style="padding:28px 0; color:var(--color-neutral-700)">No companies match these filters.</p></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- COMPANY DETAIL (MANAGER) -->
+      <sc-if value="{{ isCompany }}">
+        <div style="display:flex; flex-direction:column; gap:28px">
+          <div onClick="{{ backToCompanies }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; font-size:15px"><i class="ph-duotone ph-caret-left"></i><span>Companies</span></div>
+          <div style="display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr); gap:72px; align-items:start; margin-top:-12px">
+            <div style="display:flex; flex-direction:column; gap:40px">
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <span style="font-size:14px; color:var(--color-neutral-800)">{{ cd.industry }}</span>
+                <div style="display:flex; justify-content:space-between; gap:24px; align-items:flex-start">
+                  <h1 style="margin:0; text-wrap:pretty">{{ cd.name }}</h1>
+                  <div style="display:flex; flex-direction:column; align-items:flex-end; flex:none"><span style="font-size:40px; font-weight:600; line-height:1">{{ cd.score }}</span><span style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">priority / 5</span></div>
+                </div>
+                <span style="font-size:15px">{{ cd.addr }} · {{ cd.phone }} · <a href="{{ cd.webUrl }}" target="_blank">{{ cd.web }}</a></span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap"><span class="tag {{ cd.stClass }}">{{ cd.st }}</span><span class="tag tag-neutral">{{ cd.source }}</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <h5 style="margin:0">Fleet</h5>
+                <div style="display:flex; gap:28px; align-items:baseline">
+                  <div><span style="font-size:30px; font-weight:600">{{ cd.total }}</span> <span style="color:var(--color-neutral-700)">vehicles</span></div>
+                  <div><span style="font-size:20px; font-weight:600">{{ cd.trucks }}</span> <span style="color:var(--color-neutral-700)">trucks</span></div>
+                  <div><span style="font-size:20px; font-weight:600">{{ cd.vans }}</span> <span style="color:var(--color-neutral-700)">vans</span></div>
+                </div>
+                <span style="font-size:14px; color:var(--color-neutral-800)">{{ cd.mix }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-user-circle-check" style="font-size:26px"></i><span>Decision-Maker</span></h3>
+                <span style="font-size:17px; font-weight:600">{{ cd.pdmName }}</span>
+                <span style="font-size:14px; color:var(--color-neutral-800)">{{ cd.pdmLine }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:16px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-clock-counter-clockwise" style="font-size:26px"></i><span>Activity</span></h3>
+                <sc-for list="{{ cd.acts }}" as="a" hint-placeholder-count="3">
+                  <div style="display:grid; grid-template-columns:24px 1fr; gap:12px">
+                    <i class="ph-duotone {{ a.icon }}" style="font-size:20px; color:var(--color-accent-700); padding-top:2px"></i>
+                    <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:15px; font-weight:600">{{ a.label }}</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ a.when }} · {{ a.user }}</span><span style="font-size:14px; color:var(--color-neutral-800)">{{ a.note }}</span></div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ cd.noActs }}"><span style="color:var(--color-neutral-700)">No recorded outreach yet.</span></sc-if>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:40px">
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-user-switch" style="font-size:26px"></i><span>Owner</span></h3>
+                <div style="display:flex; gap:10px">
+                  <select class="input" value="{{ ownerPick }}" onChange="{{ onOwnerPick }}" style="min-height:44px; flex:1">
+                    <option value="">Unassigned</option>
+                    <sc-for list="{{ activeRepOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+                  </select>
+                  <button onClick="{{ applyOwner }}" disabled="{{ ownerSame }}" class="btn btn-primary" style="min-height:44px">Change owner</button>
+                </div>
+                <span style="font-size:13px; color:var(--color-neutral-700)">Follow-ups and queue eligibility move to the new owner. Activity history stays with the company.</span>
+                <div style="display:flex; flex-direction:column; gap:8px; padding-top:6px">
+                  <sc-for list="{{ cd.hist }}" as="h" hint-placeholder-count="1">
+                    <div style="display:flex; flex-direction:column; font-size:14px"><span>{{ h.change }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ h.when }} · {{ h.by }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-phone-call" style="font-size:26px"></i><span>Outreach</span></h3>
+                <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+                  <div style="display:flex; flex-direction:column"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Attempts</span><span style="font-size:24px; font-weight:600">{{ cd.attempts }}</span></div>
+                  <div style="display:flex; flex-direction:column"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Last</span><span style="font-size:14px">{{ cd.last }}</span></div>
+                  <div style="display:flex; flex-direction:column"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Next eligible</span><span style="font-size:14px">{{ cd.next }}</span></div>
+                </div>
+                <sc-if value="{{ cd.isRemoved }}">
+                  <div style="display:flex; align-items:center; gap:12px; padding-top:6px"><span style="font-size:14px; flex:1">Removed from outreach by a rep.</span><div onClick="{{ restore }}" class="btn btn-secondary" style="min-height:44px"><i class="ph-duotone ph-arrow-u-up-left"></i><span>Restore to outreach</span></div></div>
+                </sc-if>
+                <sc-if value="{{ cd.isDnc }}"><span style="font-size:14px; color:var(--color-accent-2-700)">Do not contact. This is permanent and can't be reactivated by CSV import.</span></sc-if>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-flag-banner" style="font-size:26px"></i><span>Opportunity</span></h3>
+                <div onClick="{{ toggleOpp }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:52px">
+                  <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Opportunity identified</span><span style="font-size:13px; color:var(--color-neutral-700)">Interest and initial fact finding completed.</span></div>
+                  <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ oppTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ oppKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+                </div>
+                <div style="display:flex; align-items:center; gap:14px">
+                  <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Quotes sent: {{ cd.quotes }}</span><span style="font-size:13px; color:var(--color-neutral-700)">Count only, no amounts. Logged with your name.</span></div>
+                  <div onClick="{{ addQuote }}" class="btn btn-secondary" style="min-height:44px"><i class="ph-duotone ph-plus"></i><span>Record quote</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 06 SETTINGS -->
+      <sc-if value="{{ isSettings }}">
+        <div style="display:flex; flex-direction:column; gap:32px">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap">
+            <h1 style="margin:0">Settings</h1>
+            <div style="display:flex; gap:10px; align-items:center">
+              <span style="font-size:13px; color:var(--color-neutral-700)">{{ dirtyLabel }}</span>
+              <button onClick="{{ discard }}" disabled="{{ notDirty }}" class="btn btn-secondary" style="min-height:44px">Discard</button>
+              <button onClick="{{ saveSettings }}" disabled="{{ notDirty }}" class="btn btn-primary" style="min-height:44px">Save changes</button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:220px minmax(0,1fr); gap:64px; align-items:start">
+            <nav style="display:flex; flex-direction:column; gap:2px; position:sticky; top:24px">
+              <sc-for list="{{ sections }}" as="s" hint-placeholder-count="5">
+                <div onClick="{{ s.go }}" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-md); font-size:16px; color:{{ s.color }}; font-weight:{{ s.weight }}; background:{{ s.bg }}" style-hover="background:var(--color-neutral-100)"><i class="ph-duotone {{ s.icon }}" style="font-size:20px"></i><span>{{ s.label }}</span></div>
+              </sc-for>
+            </nav>
+
+            <div style="display:flex; flex-direction:column; gap:40px; min-width:0">
+              <sc-if value="{{ secTeam }}">
+                <div style="display:flex; flex-direction:column; gap:36px">
+                  <div style="display:flex; flex-direction:column; gap:6px"><h2 style="margin:0">Sales team</h2><span style="font-size:15px; color:var(--color-neutral-800)">Reps sign in from their daily email. Targets are recommendations, not call limits.</span></div>
+                  <div style="overflow-x:auto">
+                    <table class="table" style="font-size:15px; min-width:860px">
+                      <thead><tr><th>Rep</th><th>Daily target</th><th>Daily email</th><th>Status</th><th style="text-align:right">Companies</th><th>Last active</th><th></th></tr></thead>
+                      <tbody>
+                        <sc-for list="{{ teamRows }}" as="r" hint-placeholder-count="5">
+                          <tr>
+                            <td style="padding:12px 10px"><div style="display:flex; flex-direction:column"><span style="font-weight:600">{{ r.name }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ r.email }}</span></div></td>
+                            <td><input class="input" type="number" min="1" value="{{ r.target }}" onChange="{{ r.setTarget }}" style="width:80px; min-height:38px"></td>
+                            <td><input type="checkbox" checked="{{ r.daily }}" onChange="{{ r.toggleDaily }}" style="width:18px; height:18px; accent-color:var(--color-accent)"></td>
+                            <td><select class="input" value="{{ r.status }}" onChange="{{ r.setStatus }}" style="width:130px; min-height:38px"><option>Active</option><option>Paused</option><option>Disabled</option></select></td>
+                            <td style="text-align:right">{{ r.count }}</td>
+                            <td style="font-size:14px; color:var(--color-neutral-800)">{{ r.last }}</td>
+                            <td><div onClick="{{ r.revoke }}" class="btn btn-ghost" style="font-size:13px; white-space:nowrap">Revoke sessions</div></td>
+                          </tr>
+                        </sc-for>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <h4 style="margin:0">Add a sales rep</h4>
+                    <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 110px auto; gap:10px; align-items:end">
+                      <div class="field"><label>Name</label><input class="input" value="{{ newRep.name }}" onChange="{{ onNewName }}" style="min-height:44px"></div>
+                      <div class="field"><label>Email</label><input class="input" value="{{ newRep.email }}" onChange="{{ onNewEmail }}" placeholder="name@truckcolors.com" style="min-height:44px"></div>
+                      <div class="field"><label>Daily target</label><input class="input" type="number" value="{{ newRep.target }}" onChange="{{ onNewTarget }}" style="min-height:44px"></div>
+                      <button onClick="{{ addRep }}" disabled="{{ newRepInvalid }}" class="btn btn-primary" style="min-height:44px"><i class="ph-duotone ph-user-plus"></i><span>Add and invite</span></button>
+                    </div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <h4 style="margin:0">Reassign a departing rep's companies</h4>
+                    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap">
+                      <div class="field"><label>From</label><select class="input" value="{{ reassign.from }}" onChange="{{ onReFrom }}" style="width:200px; min-height:44px"><sc-for list="{{ repOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></div>
+                      <div class="field"><label>To</label><select class="input" value="{{ reassign.to }}" onChange="{{ onReTo }}" style="width:200px; min-height:44px"><option value="">Unassigned</option><sc-for list="{{ activeRepOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></div>
+                      <button onClick="{{ doReassign }}" disabled="{{ reassignInvalid }}" class="btn btn-secondary" style="min-height:44px">{{ reassignLabel }}</button>
+                    </div>
+                    <span style="font-size:13px; color:var(--color-neutral-700)">Applies immediately. History is kept and every change is logged.</span>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ secOutreach }}">
+                <div style="display:flex; flex-direction:column; gap:36px">
+                  <div style="display:flex; flex-direction:column; gap:6px"><h2 style="margin:0">Outreach cadence</h2><span style="font-size:15px; color:var(--color-neutral-800)">How long a company waits before it's eligible again after each outcome. Changes apply to future scheduling only. A date the prospect asks for always wins.</span></div>
+                  <div style="display:flex; flex-direction:column; gap:4px; max-width:620px">
+                    <sc-for list="{{ cadRows }}" as="r" hint-placeholder-count="6">
+                      <div style="display:grid; grid-template-columns:minmax(0,1fr) 90px 40px 150px; gap:12px; align-items:center; padding:8px 0">
+                        <div style="display:flex; flex-direction:column"><span style="font-size:16px">{{ r.label }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ r.hint }}</span></div>
+                        <input class="input" type="number" min="1" value="{{ r.v }}" onChange="{{ r.set }}" disabled="{{ r.none }}" placeholder="—" style="min-height:40px; text-align:right">
+                        <span style="font-size:14px; color:var(--color-neutral-700); opacity:{{ r.daysOp }}">days</span>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer"><input type="checkbox" checked="{{ r.none }}" onChange="{{ r.toggleNone }}" style="width:18px; height:18px; accent-color:var(--color-accent)">None</label>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:12px; max-width:620px">
+                    <h4 style="margin:0">Existing-customer reminders</h4>
+                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 90px 40px; gap:12px; align-items:center; max-width:520px">
+                      <span style="font-size:16px">Snooze length</span>
+                      <input class="input" type="number" min="1" value="{{ st.snooze }}" onChange="{{ onSnooze }}" style="min-height:40px; text-align:right">
+                      <span style="font-size:14px; color:var(--color-neutral-700)">days</span>
+                    </div>
+                    <div onClick="{{ toggleCustEmail }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:52px; max-width:520px">
+                      <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Show due reminders in the daily email</span><span style="font-size:13px; color:var(--color-neutral-700)">Listed separately from cold prospects. Touch-base intervals come from the imported file.</span></div>
+                      <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ custTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ custKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ secEmail }}">
+                <div style="display:flex; flex-direction:column; gap:32px; max-width:620px">
+                  <div style="display:flex; flex-direction:column; gap:6px"><h2 style="margin:0">Rep daily email</h2><span style="font-size:15px; color:var(--color-neutral-800)">The morning prospect list each active rep receives. Per-rep opt-out lives under Sales team.</span></div>
+                  <div onClick="{{ togglePause }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:52px">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Send daily emails</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ pauseDesc }}</span></div>
+                    <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ sendTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ sendKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+                  </div>
+                  <div class="field"><label>Days</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap">
+                      <sc-for list="{{ dayChips }}" as="d" hint-placeholder-count="7"><div onClick="{{ d.toggle }}" class="btn {{ d.cls }}" style="min-width:56px; min-height:44px">{{ d.label }}</div></sc-for>
+                    </div>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+                    <div class="field"><label>Send time</label><select class="input" value="{{ st.emailTime }}" onChange="{{ onEmailTime }}" style="min-height:44px"><option>6:00 AM</option><option>6:30 AM</option><option>7:00 AM</option><option>7:30 AM</option><option>8:00 AM</option></select></div>
+                    <div class="field"><label>Starter list length</label><select class="input" value="{{ st.starter }}" onChange="{{ onStarter }}" style="min-height:44px"><option value="3">3 companies</option><option value="5">5 companies</option><option value="10">10 companies</option></select></div>
+                  </div>
+                  <a href="Upfit Opps Rep Mobile.dc.html" style="font-size:15px">Preview the rep email →</a>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ secReport }}">
+                <div style="display:flex; flex-direction:column; gap:32px; max-width:620px">
+                  <div style="display:flex; flex-direction:column; gap:6px"><h2 style="margin:0">Manager summary email</h2><span style="font-size:15px; color:var(--color-neutral-800)">Team and per-rep counts with simple conversion rates. No grades.</span></div>
+                  <div class="field"><label>Frequency</label>
+                    <div class="seg">
+                      <label class="seg-opt" style="padding:9px 18px; font-size:14px"><input type="radio" name="freq" checked="{{ freqDaily }}" onChange="{{ setDaily }}">Daily</label>
+                      <label class="seg-opt" style="padding:9px 18px; font-size:14px"><input type="radio" name="freq" checked="{{ freqWeekly }}" onChange="{{ setWeekly }}">Weekly</label>
+                    </div>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+                    <sc-if value="{{ freqWeekly }}"><div class="field"><label>Day</label><select class="input" value="{{ st.sumDay }}" onChange="{{ onSumDay }}" style="min-height:44px"><option>Monday</option><option>Friday</option></select></div></sc-if>
+                    <div class="field"><label>Delivery time</label><select class="input" value="{{ st.sumTime }}" onChange="{{ onSumTime }}" style="min-height:44px"><option>6:00 AM</option><option>7:00 AM</option><option>5:00 PM</option><option>6:00 PM</option></select></div>
+                  </div>
+                  <div class="field"><label>Recipients</label>
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <sc-for list="{{ recipients }}" as="r" hint-placeholder-count="2">
+                        <div style="display:flex; align-items:center; gap:10px"><span style="font-size:15px; flex:1">{{ r.email }}</span><div onClick="{{ r.remove }}" class="btn btn-ghost" style="font-size:13px">Remove</div></div>
+                      </sc-for>
+                      <div style="display:flex; gap:10px"><input class="input" value="{{ newRecipient }}" onChange="{{ onNewRecipient }}" placeholder="Add an email address" style="min-height:44px"><button onClick="{{ addRecipient }}" disabled="{{ recipientInvalid }}" class="btn btn-secondary" style="min-height:44px">Add</button></div>
+                    </div>
+                  </div>
+                  <div onClick="{{ toggleTrend }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:52px">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Compare with previous period</span><span style="font-size:13px; color:var(--color-neutral-700)">Adds a change figure next to each team count.</span></div>
+                    <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ trendTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ trendKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+                  </div>
+                  <div onClick="{{ goEmail }}" class="btn btn-secondary" style="align-self:flex-start; min-height:44px"><i class="ph-duotone ph-envelope-open"></i><span>Preview summary email</span></div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ secLb }}">
+                <div style="display:flex; flex-direction:column; gap:32px; max-width:620px">
+                  <div style="display:flex; flex-direction:column; gap:6px"><h2 style="margin:0">Team leaderboard</h2><span style="font-size:15px; color:var(--color-neutral-800)">Shows at the bottom of each rep's mobile queue. Never included in emails.</span></div>
+                  <div onClick="{{ toggleLb }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:52px">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Show the leaderboard to reps</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ lbDesc }}</span></div>
+                    <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ lbTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ lbKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:8px">
+                    <span style="font-size:14px; font-weight:600">Metrics reps see</span>
+                    <span style="font-size:14px; line-height:1.6; color:var(--color-neutral-800)">Recorded attempts, percent of target, decision-makers reached, opportunities identified and the opportunity conversion ratio. Default view is week to date.</span>
+                  </div>
+                  <span style="font-size:13px; color:var(--color-neutral-700)">After saving, open the rep prototype in another tab to see the change.</span>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- SUMMARY EMAIL -->
+      <sc-if value="{{ isEmail }}">
+        <div style="display:flex; flex-direction:column; gap:24px; max-width:680px">
+          <div onClick="{{ goSettingsReport }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; font-size:15px"><i class="ph-duotone ph-caret-left"></i><span>Settings</span></div>
+          <div style="display:flex; flex-direction:column; gap:4px; font-size:14px; color:var(--color-neutral-800); margin-top:-8px">
+            <span><strong>From</strong> {{ brandName }} via Upfit Opps</span>
+            <span><strong>To</strong> {{ recipientLine }}</span>
+            <span><strong>Subject</strong> {{ emailSubject }}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:30px; padding:36px 40px 40px; border-radius:var(--radius-lg); box-shadow:var(--shadow-md)">
+            <span style="font-size:22px; font-weight:600; color:var(--color-accent)">{{ brandName }}</span>
+            <div style="display:flex; flex-direction:column; gap:4px"><h2 style="margin:0">{{ emailHeadline }}</h2><span style="font-size:15px; color:var(--color-neutral-800)">{{ emailRange }}</span></div>
+            <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px 20px">
+              <sc-for list="{{ emailTotals }}" as="t" hint-placeholder-count="6">
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ t.label }}</span>
+                  <span style="font-size:32px; font-weight:600; line-height:1.05">{{ t.value }}</span>
+                  <span style="font-size:13px; color:{{ t.trendColor }}">{{ t.trend }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <table class="table" style="font-size:14px">
+              <thead><tr><th>Rep</th><th style="text-align:right">Attempts</th><th style="text-align:right">Of target</th><th style="text-align:right">DM conv.</th><th style="text-align:right">Opps</th><th style="text-align:right">Quoted</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ repRowsPerfEmail }}" as="r" hint-placeholder-count="5">
+                  <tr><td>{{ r.name }}</td><td style="text-align:right">{{ r.a }}</td><td style="text-align:right">{{ r.pct }}</td><td style="text-align:right">{{ r.dm }}</td><td style="text-align:right">{{ r.opp }}</td><td style="text-align:right">{{ r.q }}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <span style="font-size:14px; line-height:1.5; color:var(--color-neutral-800)">{{ emailConv }}</span>
+            <div onClick="{{ goOverview }}" class="btn btn-primary" style="align-self:flex-start; min-height:48px; font-size:16px">Open Manager Overview</div>
+          </div>
+        </div>
+      </sc-if>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}">
+    <div style="position:fixed; left:50%; bottom:32px; transform:translateX(-50%); z-index:50; max-width:560px; padding:14px 18px; border-radius:var(--radius-lg); background:var(--color-neutral-900); color:#fff; font-size:15px; line-height:1.4; box-shadow:var(--shadow-lg); display:flex; gap:10px; align-items:flex-start"><i class="ph-duotone ph-check-circle" style="font-size:20px; color:var(--color-accent-300)"></i><span>{{ toast }}</span></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;distributorName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Truck Colors&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;White-label&quot;},&quot;brandColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#c8102e&quot;,&quot;options&quot;:[&quot;#c8102e&quot;,&quot;#0088b0&quot;,&quot;#1d6b3c&quot;,&quot;#2a3f9d&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;White-label&quot;}}">
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  LB_KEY = 'upfitopps.demo.leaderboard';
+  REPS0 = [
+    { id: 'jm', name: 'Jake Morrison', email: 'jake.morrison@truckcolors.com', target: 10, daily: true, status: 'Active', last: 'Today, 9:42 AM' },
+    { id: 'dr', name: 'Dana Ruiz', email: 'dana.ruiz@truckcolors.com', target: 15, daily: true, status: 'Active', last: 'Today, 10:05 AM' },
+    { id: 'mb', name: 'Marcus Bell', email: 'marcus.bell@truckcolors.com', target: 10, daily: true, status: 'Active', last: 'Yesterday' },
+    { id: 'ps', name: 'Priya Shah', email: 'priya.shah@truckcolors.com', target: 20, daily: true, status: 'Active', last: 'Today, 8:51 AM' },
+    { id: 'tr', name: 'Tom Reilly', email: 'tom.reilly@truckcolors.com', target: 10, daily: false, status: 'Paused', last: 'Nov 3' },
+  ];
+  // [attempts, DMs identified, DM conversations, opportunities, companies quoted]
+  STATS = {
+    today: { jm: [6, 1, 1, 0, 0], dr: [9, 1, 2, 1, 0], mb: [5, 0, 0, 0, 0], ps: [14, 2, 3, 1, 1], tr: [0, 0, 0, 0, 0] },
+    wtd: { jm: [37, 4, 5, 1, 1], dr: [52, 5, 7, 2, 1], mb: [26, 2, 3, 0, 0], ps: [71, 6, 9, 3, 2], tr: [0, 0, 0, 0, 0] },
+    mtd: { jm: [148, 13, 17, 4, 3], dr: [201, 15, 22, 6, 4], mb: [121, 9, 11, 2, 1], ps: [268, 20, 29, 7, 5], tr: [18, 1, 2, 0, 0] },
+    d30: { jm: [209, 18, 24, 6, 4], dr: [287, 21, 31, 8, 5], mb: [176, 12, 15, 3, 2], ps: [372, 28, 41, 10, 7], tr: [64, 4, 6, 1, 0] },
+  };
+  PREV = { jm: 0.88, dr: 0.93, mb: 1.12, ps: 0.9, tr: 1 };
+  DAYS = { today: 1, wtd: 4, mtd: 14, d30: 21 };
+  RANGE = { today: 'Thursday, Nov 19', wtd: 'Nov 16–19', mtd: 'Nov 1–19', d30: 'Oct 21–Nov 19' };
+  PLABEL = { today: 'Today', wtd: 'Week to date', mtd: 'Month to date', d30: 'Last 30 days' };
+  OUT = { na: ['No Answer', 'ph-phone-slash'], vm: ['Left Voicemail', 'ph-voicemail'], gk: ['Spoke to Gatekeeper', 'ph-user-switch'], dm: ['Spoke to Decision-Maker', 'ph-handshake'], opp: ['Opportunity identified', 'ph-flag-banner'], quote: ['Quote recorded', 'ph-receipt'], restore: ['Restored to outreach', 'ph-arrow-u-up-left'], remove: ['Removed from outreach', 'ph-prohibit'], dnc: ['Marked Do Not Contact', 'ph-hand-palm'] };
+  CAD0 = { na: 3, vm: 5, gk: 7, dm: 14, ni: 60, wn: null };
+  CADL = { na: 'No Answer', vm: 'Left Voicemail', gk: 'Spoke to Gatekeeper', dm: 'Spoke to Decision-Maker', ni: 'Not interested now', wn: 'Wrong Number' };
+
+  fmt = n => new Date(2026, 10, 19 + n).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  seed() {
+    const P = [['Huron Valley', 'Ann Arbor', '48104'], ['Washtenaw', 'Ypsilanti', '48197'], ['Great Lakes', 'Saline', '48176'], ['Arbor', 'Ann Arbor', '48103'], ['Metro', 'Dearborn', '48126'], ['Livonia', 'Livonia', '48150'], ['Kensington', 'Brighton', '48116'], ['Clearwater', 'Canton', '48187'], ['Plymouth', 'Plymouth', '48170'], ['Superior', 'Ypsilanti', '48198'], ['Novi', 'Novi', '48375'], ['Chelsea', 'Chelsea', '48118'], ['Rochester', 'Rochester Hills', '48307'], ['Westland', 'Westland', '48185'], ['Milford', 'Milford', '48381'], ['Dexter', 'Dexter', '48130'], ['Farmington', 'Farmington Hills', '48335'], ['Belleville', 'Belleville', '48111'], ['Taylor', 'Taylor', '48180'], ['Wixom', 'Wixom', '48393']];
+    const T = [['Plumbing & Mechanical', 'Plumbing & HVAC'], ['Electric Co.', 'Electrical'], ['Fiber & Cable', 'Cable installation'], ['Pest Solutions', 'Pest control'], ['Glass & Glazing', 'Glass & glazing'], ['Landscape Group', 'Landscaping'], ['Restoration', 'Restoration'], ['Lock & Security', 'Locksmith'], ['Utility Services', 'Underground utility'], ['Sign & Lighting', 'Signs & lighting'], ['Fire Protection', 'Fire protection'], ['Roofing', 'Roofing'], ['Courier', 'Courier & delivery'], ['Facility Services', 'Facility maintenance']];
+    const OW = ['jm', 'dr', 'mb', 'ps', 'jm', 'dr', 'ps', null, 'mb', 'ps', 'dr', null];
+    const PEOPLE = [['Rick Halvorsen', 'Owner'], ['Tara Quinn', 'Fleet Manager'], ['Steve Kowalski', 'Operations Director'], ['Julie Brandt', 'General Manager'], ['Anthony Russo', 'President'], ['Greg Patel', 'Service Manager']];
+    const MIX = ['Ford Transit 250 ×{v} · F-250 ×{t}', 'Ram ProMaster ×{v} · F-350 ×{t}', 'Chevy Express ×{v} · Silverado 2500 ×{t}', 'Transit Connect ×{v} · F-550 ×{t}'];
+    const cs = {}, seen = new Set();
+    for (let i = 0; i < 70 && Object.keys(cs).length < 64; i++) {
+      const p = P[i % 20], t = T[(i * 3 + Math.floor(i / 20)) % 14];
+      const n = `${p[0]} ${t[0]}`; if (seen.has(n)) continue; seen.add(n);
+      let owner = OW[i % 12]; if (i % 17 === 5) owner = 'tr';
+      let st = 'cold', src = 'as';
+      if (i % 13 === 4) { st = 'customer'; src = 'tc'; } else if (i % 11 === 6) st = 'opp'; else if (i % 23 === 9) st = 'removed'; else if (i === 31) st = 'dnc';
+      if (owner === null && st !== 'cold') owner = 'dr';
+      const trucks = (i * 7) % 25, vans = ((i * 11) % 28) + 2;
+      const acts = [];
+      if (i % 4 !== 0 || st !== 'cold') {
+        const d = -((i % 15) + 1), o = ['na', 'vm', 'gk', 'dm'][i % 4];
+        const who = owner ? this.REPS0.find(r => r.id === owner).name : 'Dana Ruiz';
+        if (st === 'opp') acts.push({ d: d + 1, o: 'opp', n: 'Replacing part of the fleet in spring', u: who });
+        acts.push({ d, o, n: o === 'gk' ? 'Front desk says the owner is in Thursdays.' : o === 'dm' ? 'Open to a fleet review next month.' : '', u: who });
+        if (i % 3 === 1) acts.push({ d: d - 7, o: 'na', n: '', u: who });
+        if (st === 'removed') acts.unshift({ d: d + 1, o: 'remove', n: 'Closed this location', u: who });
+      }
+      const pp = PEOPLE[i % 6];
+      cs['m' + i] = {
+        id: 'm' + i, n, city: p[1], zip: p[2], ind: t[1], sc: Math.min(4.9, 2.1 + ((i * 37) % 29) / 10), st, src, owner, trucks, vans,
+        mix: MIX[i % 4].replace('{v}', vans).replace('{t}', trucks || 1), phone: `(734) 555-${String(100 + i).padStart(4, '0')}`,
+        web: n.toLowerCase().replace(/[^a-z]/g, '').slice(0, 18) + '.com', addr: `${1000 + i * 37} ${['Industrial Hwy', 'Michigan Ave', 'Grand River Ave', 'Main St'][i % 4]}, ${p[1]}, MI ${p[2]}`,
+        pdm: i % 3 === 0 ? { name: pp[0], title: pp[1], by: owner ? this.REPS0.find(r => r.id === owner).name : 'Dana Ruiz' } : null,
+        acts, q: st === 'opp' ? i % 3 : st === 'customer' ? 2 : 0,
+        hist: owner ? [{ change: `Assigned to ${this.REPS0.find(r => r.id === owner).name} by CSV import`, when: 'Oct 28', by: 'L2 import' }] : [{ change: 'Imported unassigned', when: 'Oct 28', by: 'L2 import' }],
+      };
+    }
+    return cs;
+  }
+  readLb() { try { const v = localStorage.getItem(this.LB_KEY); return v ? v === 'on' : true; } catch (e) { return true; } }
+  settings0() {
+    return { reps: this.REPS0.map(r => ({ ...r })), cad: { ...this.CAD0 }, snooze: 7, custEmail: true, send: true, days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], emailTime: '7:00 AM', starter: '5', freq: 'weekly', sumDay: 'Monday', sumTime: '7:00 AM', recipients: ['lisa.chen@truckcolors.com', 'owner@truckcolors.com'], trend: true, lb: this.readLb() };
+  }
+  initState() {
+    const s0 = this.settings0();
+    return { screen: 'login', login: { user: 'lisa.chen@truckcolors.com', pass: '', errUser: '', errPass: '', rec: 'lisa.chen@truckcolors.com', errRec: '', mode: 'signin' },
+      period: 'wtd', metric: 0, cs: this.seed(), f: this.blankF(), sel: {}, assignTo: 'dr', cur: null, ownerPick: '',
+      st: s0, saved: JSON.parse(JSON.stringify(s0)), section: 'team', newRep: { name: '', email: '', target: 10 }, reassign: { from: 'tr', to: 'dr' }, newRecipient: '', toast: '' };
+  }
+  blankF() { return { q: '', zip: '', owner: '', status: '', ind: '', src: '', pri: '', sort: 'pri' }; }
+  state = this.initState();
+
+  componentDidMount() { this.applyBrand(); }
+  componentDidUpdate() {
+    this.applyBrand();
+    if (this.state.toast && this._lastToast !== this.state.toast) { clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 3400); }
+    this._lastToast = this.state.toast;
+  }
+  applyBrand() {
+    const el = this.rootRef.current; if (!el) return;
+    const c = this.props.brandColor ?? '#c8102e'; if (el._brand === c) return; el._brand = c;
+    const mix = (p, w) => `color-mix(in oklch, ${c} ${p}%, ${w})`, set = (k, v) => el.style.setProperty(k, v);
+    set('--color-bg', '#fff'); set('--color-accent', c);
+    set('--color-accent-100', mix(9, '#fff')); set('--color-accent-200', mix(18, '#fff')); set('--color-accent-300', mix(34, '#fff')); set('--color-accent-400', mix(62, '#fff'));
+    set('--color-accent-600', mix(86, '#000')); set('--color-accent-700', mix(72, '#000')); set('--color-accent-800', mix(56, '#000')); set('--color-accent-900', mix(40, '#000'));
+  }
+  go(screen, extra = {}) { this.setState({ screen, ...extra }); try { window.scrollTo(0, 0); } catch (e) {} }
+  setLogin(p) { this.setState(s => ({ login: { ...s.login, ...p } })); }
+  signIn() {
+    const l = this.state.login, errUser = l.user.trim() ? '' : 'Enter your username or email.', errPass = l.pass ? '' : 'Enter your password.';
+    if (errUser || errPass) return this.setLogin({ errUser, errPass });
+    this.go('overview', { login: { ...l, pass: '', errUser: '', errPass: '' } });
+  }
+  setSt(p) { this.setState(s => ({ st: { ...s.st, ...p } })); }
+  setRep(id, p) { this.setState(s => ({ st: { ...s.st, reps: s.st.reps.map(r => r.id === id ? { ...r, ...p } : r) } })); }
+  repName(id) { const r = this.state.st.reps.find(r => r.id === id); return r ? r.name : 'Unassigned'; }
+  assign(ids, to) {
+    const name = to ? this.repName(to) : null;
+    this.setState(s => {
+      const cs = { ...s.cs };
+      ids.forEach(id => { const c = cs[id]; if ((c.owner || '') === (to || '')) return; cs[id] = { ...c, owner: to || null, hist: [{ change: to ? (c.owner ? `Reassigned from ${this.repName(c.owner)} to ${name}` : `Assigned to ${name}`) : `Unassigned from ${this.repName(c.owner)}`, when: 'Today', by: 'Lisa Chen' }, ...c.hist] }; });
+      return { cs, sel: {}, toast: to ? `${ids.length} ${ids.length === 1 ? 'company' : 'companies'} assigned to ${name} · now eligible for their queue` : `${ids.length} ${ids.length === 1 ? 'company' : 'companies'} unassigned · removed from queues` };
+    });
+  }
+  patchCur(fn, toast) { this.setState(s => { const c = { ...s.cs[s.cur], acts: [...s.cs[s.cur].acts] }; fn(c); return { cs: { ...s.cs, [c.id]: c }, toast }; }); }
+  statusOf(c) { return { cold: ['Cold prospect', 'tag-accent'], customer: ['Existing customer', 'tag-neutral'], opp: ['Opportunity', 'tag-accent-2'], removed: ['Removed', 'tag-outline'], dnc: ['Do not contact', 'tag-accent-2'] }[c.st]; }
+
+  renderVals() {
+    const s = this.state, st = s.st, cs = s.cs, all = Object.values(cs);
+    const brandName = this.props.distributorName ?? 'Truck Colors';
+    const reps = st.reps;
+    const lastOf = c => { const a = c.acts.find(a => ['na', 'vm', 'gk', 'dm'].includes(a.o)); return a; };
+
+    // overview
+    const days = this.DAYS[s.period];
+    const statOf = id => (this.STATS[s.period][id] || [0, 0, 0, 0, 0]);
+    const perf = reps.map(r => {
+      const [a, pdm, dm, opp, q] = statOf(r.id); const tgt = r.target * days;
+      return { id: r.id, name: r.name, status: r.status === 'Active' ? '' : r.status, target: r.target, a, pdm, dm, opp, q, pctN: r.status === 'Active' ? a / tgt : null,
+        pct: r.status === 'Active' ? Math.round((a / tgt) * 100) + '%' : '—', yield: dm ? `${Math.round((opp / dm) * 100)}% (${opp}/${dm})` : '—', tgt,
+        open: () => this.go('companies', { f: { ...this.blankF(), owner: r.id }, sel: {} }) };
+    });
+    const sum = k => perf.reduce((t, r) => t + r[k], 0);
+    const activeTgt = perf.filter(r => r.pctN != null).reduce((t, r) => t + r.tgt, 0);
+    const activeA = perf.filter(r => r.pctN != null).reduce((t, r) => t + r.a, 0);
+    const team = { target: reps.filter(r => r.status === 'Active').reduce((t, r) => t + +r.target, 0), a: sum('a'), pdm: sum('pdm'), dm: sum('dm'), opp: sum('opp'), q: sum('q') };
+    team.pct = activeTgt ? Math.round((activeA / activeTgt) * 100) + '%' : '—';
+    team.yield = team.dm ? `${Math.round((team.opp / team.dm) * 100)}% (${team.opp}/${team.dm})` : '—';
+    const pool = all.filter(c => c.st !== 'customer');
+    const isAtt = a => ['na', 'vm', 'gk', 'dm'].includes(a.o);
+    const nAtt = pool.filter(c => c.acts.some(isAtt)).length;
+    const nCon = pool.filter(c => c.acts.some(a => a.o === 'gk' || a.o === 'dm')).length;
+    const nPdm = pool.filter(c => c.pdm).length;
+    const nOpp = pool.filter(c => c.st === 'opp').length;
+    const P = n => pool.length ? Math.round((n / pool.length) * 100) + '%' : '0%';
+    const W = n => pool.length ? (n / pool.length) * 100 + '%' : '0%';
+    const unas = pool.filter(c => !c.owner).length;
+    const leadFunnel = [
+      { label: 'Total cold prospects', value: pool.length, pct: '100%', w: '100%', sub: `${pool.length - unas} assigned · ${unas} unassigned` },
+      { label: 'Outreach attempted', value: nAtt, pct: P(nAtt), w: W(nAtt), sub: 'At least one recorded attempt' },
+      { label: 'Contacted', value: nCon, pct: P(nCon), w: W(nCon), sub: 'Spoke with a gatekeeper or decision-maker' },
+      { label: 'Decision-makers identified', value: nPdm, pct: P(nPdm), w: W(nPdm), sub: 'Primary confirmed by a rep' },
+      { label: 'Opportunities', value: nOpp, pct: P(nOpp), w: W(nOpp), sub: nCon ? `${Math.round((nOpp / nCon) * 100)}% of contacted companies` : 'None yet' },
+    ];
+    const totals = [
+      { label: 'Recorded attempts', value: team.a, sub: `${team.pct} of team target` },
+      { label: 'Decision-makers identified', value: team.pdm, sub: 'Confirmed by a rep' },
+      { label: 'DM conversations', value: team.dm, sub: 'Spoke to Decision-Maker' },
+      { label: 'Opportunities', value: team.opp, sub: `Yield ${team.yield}` },
+      { label: 'Companies quoted', value: team.q, sub: 'At least one quote recorded' },
+    ];
+    const MET = [['Attempts', 'a'], ['DMs identified', 'pdm'], ['DM conversations', 'dm'], ['Opportunities', 'opp'], ['Quoted', 'q']];
+    const mk = MET[s.metric][1];
+    const max = Math.max(1, ...perf.map(r => mk === 'a' ? Math.max(r.a, r.pctN != null ? r.tgt : 0) : r[mk]));
+    const bars = perf.map(r => ({ name: r.name + (r.status ? ` (${r.status.toLowerCase()})` : ''), v: r[mk], w: (r[mk] / max) * 100 + '%', hasMark: mk === 'a' && r.pctN != null, mark: `calc(${(r.tgt / max) * 100}% - 1px)`, open: r.open }));
+
+    // companies
+    const f = s.f;
+    let rows = all.filter(c => (!f.q || c.n.toLowerCase().includes(f.q.toLowerCase())) && (!f.zip || c.zip.startsWith(f.zip))
+      && (!f.owner || (f.owner === 'none' ? !c.owner : c.owner === f.owner)) && (!f.status || c.st === f.status) && (!f.ind || c.ind === f.ind)
+      && (!f.src || c.src === f.src) && (!f.pri || (f.pri === 'hi' ? c.sc >= 4 : f.pri === 'mid' ? c.sc >= 3 && c.sc < 4 : c.sc < 3)));
+    const lastD = c => { const a = lastOf(c); return a ? a.d : -999; };
+    rows.sort((a, b) => f.sort === 'name' ? a.n.localeCompare(b.n) : f.sort === 'zip' ? a.zip.localeCompare(b.zip) : f.sort === 'last' ? lastD(b) - lastD(a) : b.sc - a.sc);
+    const filteredIds = rows.map(c => c.id);
+    const selIds = Object.keys(s.sel).filter(k => s.sel[k]);
+    const toggleSel = id => this.setState(x => ({ sel: { ...x.sel, [id]: !x.sel[id] } }));
+    const rowsVm = rows.map(c => {
+      const [stl, stc] = this.statusOf(c), a = lastOf(c);
+      return { name: c.n, city: c.city, zip: c.zip, ind: c.ind, score: c.sc.toFixed(1), st: stl, stClass: stc, owner: c.owner ? this.repName(c.owner) : 'Unassigned',
+        ownerColor: c.owner ? 'var(--color-text)' : 'var(--color-accent-2-700)', last: a ? `${this.OUT[a.o][0]} · ${this.fmt(a.d)}` : 'Never contacted',
+        sel: !!s.sel[c.id], bg: s.sel[c.id] ? 'var(--color-accent-100)' : 'transparent', toggle: () => toggleSel(c.id), open: () => this.go('company', { cur: c.id, ownerPick: c.owner || '' }) };
+    });
+    const unassigned = all.filter(c => !c.owner).length;
+    const setF = p => this.setState(x => ({ f: { ...x.f, ...p }, sel: {} }));
+    const hasFilters = !!(f.q || f.zip || f.owner || f.status || f.ind || f.src || f.pri);
+    const repOpts = reps.map(r => ({ id: r.id, name: r.name + (r.status !== 'Active' ? ` (${r.status.toLowerCase()})` : '') }));
+    const activeRepOpts = reps.filter(r => r.status !== 'Disabled').map(r => ({ id: r.id, name: r.name }));
+
+    // company detail
+    let cd = { acts: [], hist: [] };
+    const co = s.cur ? cs[s.cur] : null;
+    if (co) {
+      const [stl, stc] = this.statusOf(co), a = lastOf(co);
+      const cad = a ? st.cad[a.o] : 0;
+      cd = { name: co.n, industry: co.ind, score: co.sc.toFixed(1), addr: co.addr, phone: co.phone, web: co.web, webUrl: 'https://' + co.web, st: stl, stClass: stc,
+        source: co.src === 'as' ? 'Adrian Steel VIO · Fall 2026 cohort' : 'Distributor customer list', total: co.trucks + co.vans, trucks: co.trucks, vans: co.vans, mix: co.mix,
+        pdmName: co.pdm ? co.pdm.name : 'Not confirmed yet', pdmLine: co.pdm ? `${co.pdm.title} · confirmed by ${co.pdm.by}` : 'Reps confirm the primary decision-maker from the company screen.',
+        acts: co.acts.map(x => ({ icon: this.OUT[x.o][1], label: this.OUT[x.o][0], when: x.d === 0 ? 'Today' : this.fmt(x.d), user: x.u, note: x.n })), noActs: co.acts.length === 0,
+        hist: co.hist, attempts: co.acts.filter(x => ['na', 'vm', 'gk', 'dm'].includes(x.o)).length, last: a ? `${this.OUT[a.o][0]}, ${this.fmt(a.d)}` : 'None yet',
+        next: co.st === 'cold' ? (a ? (cad == null ? 'No follow-up' : a.d + cad <= 0 ? 'Eligible now' : this.fmt(a.d + cad)) : 'Eligible now') : '—',
+        isRemoved: co.st === 'removed', isDnc: co.st === 'dnc', quotes: co.q };
+    }
+    const track = on => on ? 'var(--color-accent)' : 'var(--color-neutral-300)', knob = on => on ? '23px' : '3px';
+
+    // settings
+    const dirty = JSON.stringify(st) !== JSON.stringify(s.saved);
+    const SECS = [['team', 'Sales team', 'ph-users-three'], ['outreach', 'Outreach cadence', 'ph-calendar-dots'], ['email', 'Rep daily email', 'ph-envelope-simple'], ['report', 'Manager summary', 'ph-chart-line-up'], ['lb', 'Leaderboard', 'ph-trophy']];
+    const count = id => all.filter(c => c.owner === id).length;
+    const nr = s.newRep;
+    const reCount = count(s.reassign.from);
+
+    // email
+    const ep = st.freq === 'weekly' ? 'wtd' : 'today';
+    const eStats = id => this.STATS[ep][id] || [0, 0, 0, 0, 0];
+    const eRows = reps.filter(r => r.status === 'Active').map(r => { const [a, , dm, opp, q] = eStats(r.id); return { name: r.name, a, pct: Math.round((a / (r.target * this.DAYS[ep])) * 100) + '%', dm, opp, q }; });
+    const eSum = i => reps.reduce((t, r) => t + eStats(r.id)[i], 0);
+    const ePrev = i => Math.round(reps.reduce((t, r) => t + eStats(r.id)[i] * (this.PREV[r.id] || 1), 0));
+    const trendOf = i => { const cur = eSum(i), prev = ePrev(i); const d = cur - prev; return st.trend ? (d === 0 ? 'Same as last period' : `${d > 0 ? '▲' : '▼'} ${Math.abs(d)} vs last ${st.freq === 'weekly' ? 'week' : 'day'}`) : ''; };
+    const trendCol = i => (eSum(i) - ePrev(i)) >= 0 ? 'var(--color-accent-700)' : 'var(--color-accent-2-700)';
+    const ET = [['Attempts', 0], ['DMs identified', 1], ['DM conversations', 2], ['Opportunities', 3], ['Companies quoted', 4]];
+    const eDm = eSum(2), eOpp = eSum(3);
+
+    return {
+      rootRef: this.rootRef, brandName,
+      jumps: [['04 Login', 'login'], ['05 Overview', 'overview'], ['Companies', 'companies'], ['Company detail', 'company'], ['06 Settings', 'settings'], ['Summary email', 'email']].map(([label, sc]) => ({ label, go: () => sc === 'company' ? this.go('company', { cur: s.cur || 'm1', ownerPick: (cs[s.cur || 'm1'].owner) || '' }) : this.go(sc) })),
+      reset: () => this.setState(this.initState()),
+      isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      login: s.login, modeSignin: s.login.mode === 'signin', modeRecover: s.login.mode === 'recover', modeSent: s.login.mode === 'sent',
+      loginTitle: s.login.mode === 'signin' ? 'Manager sign-in' : 'Reset your password', loginSub: s.login.mode === 'signin' ? `${brandName} · truckcolors.upfitopps.com` : 'We\'ll email you a secure link.',
+      onUser: e => this.setLogin({ user: e.target.value, errUser: '' }), onPass: e => this.setLogin({ pass: e.target.value, errPass: '' }), onPassKey: e => { if (e.key === 'Enter') this.signIn(); },
+      signIn: () => this.signIn(), toRecover: () => this.setLogin({ mode: 'recover', errRec: '' }), toSignin: () => this.setLogin({ mode: 'signin' }),
+      onRec: e => this.setLogin({ rec: e.target.value, errRec: '' }),
+      sendReset: () => { const v = s.login.rec.trim(); if (!/^\S+@\S+\.\S+$/.test(v)) return this.setLogin({ errRec: 'Enter a valid email address.' }); this.setLogin({ mode: 'sent' }); },
+      navItems: [['Overview', 'overview'], ['Companies', 'companies']].map(([label, sc]) => { const on = s.screen === sc || (sc === 'companies' && s.screen === 'company'); return { label, color: on ? 'var(--color-accent-700)' : 'var(--color-text)', line: on ? 'inset 0 -2px 0 var(--color-accent)' : 'none', go: () => this.go(sc) }; }),
+      goSettings: () => this.go('settings'), gearBg: s.screen === 'settings' || s.screen === 'email' ? 'var(--color-accent-100)' : 'transparent',
+      signOut: () => this.go('login', { login: { ...s.login, mode: 'signin', pass: '' } }),
+      isOverview: s.screen === 'overview', periodRange: this.RANGE[s.period], workDays: `${days} working ${days === 1 ? 'day' : 'days'}`,
+      periods: Object.keys(this.PLABEL).map(k => ({ label: this.PLABEL[k], on: s.period === k, pick: () => this.setState({ period: k }) })),
+      totals, leadFunnel, metrics: MET.map(([label], i) => ({ label, on: s.metric === i, pick: () => this.setState({ metric: i }) })), bars,
+      chartNote: mk === 'a' ? 'Black tick marks each active rep\'s target for the period. Click a rep to see their companies.' : 'Unique companies. Click a rep to see their companies.',
+      repRowsPerf: perf, team,
+      isCompanies: s.screen === 'companies', repoCount: `${all.length} companies in the ${brandName} repository`,
+      unassignedLabel: `${unassigned} unassigned · not in any queue`, showUnassigned: () => setF({ ...this.blankF(), owner: 'none' }),
+      f, onQ: e => setF({ q: e.target.value }), onZip: e => setF({ zip: e.target.value.replace(/\D/g, '').slice(0, 5) }), onOwner: e => setF({ owner: e.target.value }),
+      onStatus: e => setF({ status: e.target.value }), onInd: e => setF({ ind: e.target.value }), onSrc: e => setF({ src: e.target.value }), onPri: e => setF({ pri: e.target.value }),
+      onSort: e => this.setState({ f: { ...f, sort: e.target.value } }),
+      indOpts: [...new Set(all.map(c => c.ind))].sort(), repOpts, activeRepOpts,
+      hasSel: selIds.length > 0, noSel: selIds.length === 0, selLabel: `${selIds.length} selected`, bulkBg: selIds.length ? 'var(--color-accent-100)' : 'transparent',
+      assignTo: s.assignTo, onAssignTo: e => this.setState({ assignTo: e.target.value }),
+      applyAssign: () => this.assign(selIds, s.assignTo), applyUnassign: () => this.assign(selIds, null), clearSel: () => this.setState({ sel: {} }),
+      filteredLabel: hasFilters ? `${rows.length} companies match.` : 'Select companies to assign, reassign or unassign.', filteredCount: rows.length,
+      selectAllFiltered: () => this.setState({ sel: Object.fromEntries(filteredIds.map(id => [id, true])) }),
+      hasFilters, clearFilters: () => this.setState({ f: { ...this.blankF(), sort: f.sort }, sel: {} }),
+      allSel: rows.length > 0 && filteredIds.every(id => s.sel[id]), toggleAll: () => { const on = !(rows.length > 0 && filteredIds.every(id => s.sel[id])); this.setState({ sel: on ? Object.fromEntries(filteredIds.map(id => [id, true])) : {} }); },
+      rows: rowsVm, noRows: rowsVm.length === 0,
+      isCompany: s.screen === 'company', cd, backToCompanies: () => this.go('companies'),
+      ownerPick: s.ownerPick, onOwnerPick: e => this.setState({ ownerPick: e.target.value }), ownerSame: !co || (co.owner || '') === s.ownerPick,
+      applyOwner: () => this.assign([co.id], s.ownerPick || null),
+      restore: () => this.patchCur(c => { c.st = 'cold'; c.acts.unshift({ d: 0, o: 'restore', n: '', u: 'Lisa Chen' }); }, 'Restored · eligible for the owner\'s queue again'),
+      oppTrack: track(co && co.st === 'opp'), oppKnob: knob(co && co.st === 'opp'),
+      toggleOpp: () => this.patchCur(c => { if (c.st === 'opp') { c.st = 'cold'; } else { c.st = 'opp'; c.acts.unshift({ d: 0, o: 'opp', n: '', u: 'Lisa Chen' }); } }, co && co.st === 'opp' ? 'Opportunity flag cleared' : 'Opportunity identified · removed from cold queues'),
+      addQuote: () => this.patchCur(c => { c.q++; c.acts.unshift({ d: 0, o: 'quote', n: `Quote count now ${c.q}`, u: 'Lisa Chen' }); }, 'Quote recorded · logged to Lisa Chen'),
+      isSettings: s.screen === 'settings', st, notDirty: !dirty, dirtyLabel: dirty ? 'Unsaved changes' : 'All changes saved',
+      saveSettings: () => { try { localStorage.setItem(this.LB_KEY, st.lb ? 'on' : 'off'); } catch (e) {} this.setState({ saved: JSON.parse(JSON.stringify(st)), toast: 'Settings saved · applies to future scheduling and emails' }); },
+      discard: () => this.setState({ st: JSON.parse(JSON.stringify(s.saved)) }),
+      sections: SECS.map(([k, label, icon]) => ({ label, icon, color: s.section === k ? 'var(--color-accent-700)' : 'var(--color-text)', weight: s.section === k ? 600 : 400, bg: s.section === k ? 'var(--color-accent-100)' : 'transparent', go: () => this.setState({ section: k }) })),
+      secTeam: s.section === 'team', secOutreach: s.section === 'outreach', secEmail: s.section === 'email', secReport: s.section === 'report', secLb: s.section === 'lb',
+      teamRows: reps.map(r => ({ ...r, count: count(r.id), setTarget: e => this.setRep(r.id, { target: Math.max(1, +e.target.value || 1) }), toggleDaily: () => this.setRep(r.id, { daily: !r.daily }), setStatus: e => this.setRep(r.id, { status: e.target.value }), revoke: () => this.setState({ toast: `${r.name}'s sessions revoked · they'll verify by email next time` }) })),
+      newRep: nr, onNewName: e => this.setState({ newRep: { ...nr, name: e.target.value } }), onNewEmail: e => this.setState({ newRep: { ...nr, email: e.target.value } }), onNewTarget: e => this.setState({ newRep: { ...nr, target: +e.target.value || 10 } }),
+      newRepInvalid: !(nr.name.trim() && /^\S+@\S+\.\S+$/.test(nr.email)),
+      addRep: () => { const id = 'r' + Date.now(); this.setState(x => ({ st: { ...x.st, reps: [...x.st.reps, { id, name: nr.name.trim(), email: nr.email.trim(), target: nr.target, daily: true, status: 'Active', last: 'Invite sent' }] }, newRep: { name: '', email: '', target: 10 }, toast: `${nr.name.trim()} added · save to send the invite email` })); },
+      reassign: s.reassign, onReFrom: e => this.setState({ reassign: { ...s.reassign, from: e.target.value } }), onReTo: e => this.setState({ reassign: { ...s.reassign, to: e.target.value } }),
+      reassignInvalid: reCount === 0 || s.reassign.from === s.reassign.to, reassignLabel: `Move ${reCount} ${reCount === 1 ? 'company' : 'companies'}`,
+      doReassign: () => this.assign(all.filter(c => c.owner === s.reassign.from).map(c => c.id), s.reassign.to || null),
+      cadRows: Object.keys(this.CADL).map(k => { const none = st.cad[k] == null; return { label: this.CADL[k], v: none ? '' : st.cad[k], none, daysOp: none ? 0.4 : 1,
+        hint: none ? 'No automatic follow-up. Stays out of queues until a rep or manager acts.' : '',
+        set: e => this.setSt({ cad: { ...st.cad, [k]: Math.max(1, +e.target.value || 1) } }),
+        toggleNone: () => this.setSt({ cad: { ...st.cad, [k]: none ? (this.CAD0[k] ?? 30) : null } }) }; }),
+      onSnooze: e => this.setSt({ snooze: Math.max(1, +e.target.value || 1) }), custTrack: track(st.custEmail), custKnob: knob(st.custEmail), toggleCustEmail: () => this.setSt({ custEmail: !st.custEmail }),
+      togglePause: () => this.setSt({ send: !st.send }), sendTrack: track(st.send), sendKnob: knob(st.send), pauseDesc: st.send ? `Sending ${st.days.join(', ')} at ${st.emailTime}.` : 'Paused for all reps. Reps can still open the app.',
+      dayChips: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => ({ label: d, cls: st.days.includes(d) ? 'btn-primary' : 'btn-secondary', toggle: () => this.setSt({ days: st.days.includes(d) ? st.days.filter(x => x !== d) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].filter(x => x === d || st.days.includes(x)) }) })),
+      onEmailTime: e => this.setSt({ emailTime: e.target.value }), onStarter: e => this.setSt({ starter: e.target.value }),
+      freqDaily: st.freq === 'daily', freqWeekly: st.freq === 'weekly', setDaily: () => this.setSt({ freq: 'daily' }), setWeekly: () => this.setSt({ freq: 'weekly' }),
+      onSumDay: e => this.setSt({ sumDay: e.target.value }), onSumTime: e => this.setSt({ sumTime: e.target.value }),
+      recipients: st.recipients.map(email => ({ email, remove: () => this.setSt({ recipients: st.recipients.filter(x => x !== email) }) })),
+      newRecipient: s.newRecipient, onNewRecipient: e => this.setState({ newRecipient: e.target.value }), recipientInvalid: !/^\S+@\S+\.\S+$/.test(s.newRecipient),
+      addRecipient: () => { this.setSt({ recipients: [...st.recipients, s.newRecipient.trim()] }); this.setState({ newRecipient: '' }); },
+      toggleTrend: () => this.setSt({ trend: !st.trend }), trendTrack: track(st.trend), trendKnob: knob(st.trend),
+      goEmail: () => this.go('email'), toggleLb: () => this.setSt({ lb: !st.lb }), lbTrack: track(st.lb), lbKnob: knob(st.lb),
+      lbDesc: st.lb ? 'On. Reps see team rankings in their queue.' : 'Off. Reps see no peer metrics.',
+      isEmail: s.screen === 'email', goSettingsReport: () => this.go('settings', { section: 'report' }), goOverview: () => this.go('overview', { period: ep }),
+      recipientLine: st.recipients.join(', ') || 'No recipients',
+      emailSubject: st.freq === 'weekly' ? `${brandName} weekly summary · Nov 16–19` : `${brandName} daily summary · Thu, Nov 19`,
+      emailHeadline: st.freq === 'weekly' ? 'Week to date' : 'Today', emailRange: st.freq === 'weekly' ? `Monday, Nov 16 to Thursday, Nov 19 · sent ${st.sumDay}s at ${st.sumTime}` : `Thursday, Nov 19 · sent daily at ${st.sumTime}`,
+      emailTotals: ET.map(([label, i]) => ({ label, value: eSum(i), trend: trendOf(i), trendColor: trendCol(i) })),
+      repRowsPerfEmail: eRows,
+      emailConv: `Opportunity yield: ${eDm ? Math.round((eOpp / eDm) * 100) : 0}% (${eOpp} opportunities from ${eDm} decision-maker conversations). Counts reflect activity reps recorded in Upfit Opps.`,
+      hasToast: !!s.toast, toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

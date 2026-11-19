@@ -1,0 +1,466 @@
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+Upfit Opps
+Market Development Platform — Product Requirements Document
+MVP requirements • Consolidated decisions • Design handoff | Version 2.0 • November 19, 2026
+Document purpose: primary functional and technical specification for mockups, implementation planning,
+development, and acceptance testing. Specific UI arrangements may be refined during prototyping without
+changing the business rules below.
+1. Product definition and scope
+Upfit Opps is an L2 Digital-owned, white-label, multi-tenant sales execution and accountability application for
+commercial vehicle distributors. L2 prepares company-level market data outside the product and uploads ready-
+to-use CSV files. Upfit Opps displays that information, assigns accountable owners, delivers prioritized outreach
+queues, captures documented outcomes, supports existing-customer touch reminders, and provides
+distributor/manufacturer reporting. It is not a CRM, data enrichment engine, quoting system, or sales management
+agency.
+ Primary benefit to distributor: less prospect research and decision fatigue; more consistent relationship-
+building and simple follow-up.
+ Primary benefit to manufacturer: regional visibility into outreach, decision-maker engagement, opportunities,
+and quoted companies resulting specifically from manufacturer-supplied VIO cohorts.
+ Initial target manufacturer: Adrian Steel. Manufacturer model must support additional brands independently.
+ MVP does not perform web scraping, VIO consolidation, AI validation, score calculation, CRM/ERP/quoting
+integrations, marketing campaigns, or opportunity stage management.
+2. Roles and access
+Role Scope Allowed actions
+L2 Administrator All manufacturer and distributor
+accounts
+Create/configure accounts and
+subdomains, branding,
+managers/reps, CSV import/update,
+manage manufacturer
+assignments, view all applicable
+dashboards and settings.
+Distributor Manager Single distributor Username/password login; manage
+sales reps, daily targets, ownership
+and bulk assignment, outreach and
+email settings, company database,
+opportunities and quote counts;
+view funnel/rep reports.
+Sales Rep Single distributor (inside or outside
+use same role)
+Passwordless email-verified access;
+view/search ALL distributor
+companies, call/log outcomes,
+confirm primary decision-maker,
+add opportunities and manually
+update quote counts on any
+company; see personal queue and
+optional leaderboard. Cannot
+manage users, settings, or
+
+-- 1 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+ownership.
+Manufacturer Regional Rep Only assigned
+distributor/manufacturer programs
+View aggregate and per-distributor
+reports restricted to manufacturer-
+provided VIO cohort; no private
+distributor records or financial
+data.
+Manufacturer Leadership All programs/distributors for their
+own manufacturer
+Cross-region aggregate and
+individual distributor breakdowns,
+restricted to that manufacturer’s
+supplied VIO program data.
+No separate inside sales manager role in MVP. Inside team members use Sales Rep permission. Manufacturer
+regional assignments are to a distributor–manufacturer program relationship, not the distributor globally.
+3. Multi-tenant account provisioning and branding
+ One shared application with strict tenant isolation in database queries and authorization. Each distributor has
+its own brand, data, settings, users, and URL such as truckcolors.upfitopps.com.
+ L2 Admin Portal is the sole internal account-creation and maintenance interface; former “L2 Tenant Setup” is
+not a separate product.
+ Create distributor: account name, unique validated subdomain slug, branding logo and colors, primary
+manager username/email, initial sales reps, related manufacturer program, assigned manufacturer regional
+representative.
+ Wildcard DNS, wildcard HTTPS and application subdomain routing permit provisioning new distributor URLs
+without manual DNS entries per distributor, subject to deployment configuration.
+ L2 admins can access any distributor administration area and update branding, settings, manager/rep users,
+and CSV data.
+ Design should mirror the white-label branding pattern of ptc.upfitopps.com/cost-calculator. Exact appearance
+has not been visually verified; designers should obtain an approved screenshot/design tokens before high-
+fidelity fidelity claims.
+4. Authentication and security
+ Distributor managers sign in at upfitopps.com with username and password and land on Manager Overview;
+use secure password hashing, password recovery and rate limits.
+ Sales reps do not use passwords. First access or expired session requires short-lived, single-use email
+verification; subsequent daily-email deep links open a secure persistent device session, initially targeting 30-
+day renewable validity.
+ Daily email links are contextual navigation links, not permanent authentication keys. Manager can revoke rep
+access and pause emails.
+ Manufacturer regional/leadership users have their own authenticated portal accounts (implementation may
+use password-based login); never inherit distributor access.
+ Authorize every API call against role, distributor ID, manufacturer ID, program ID, regional assignment and
+record source. Session cookies must be Secure/HttpOnly/SameSite and revocable; add audit trails for high-
+impact edits.
+
+-- 2 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+5. Offline data preparation versus in-product CSV import
+OUTSIDE platform (L2 service): obtain VIO vehicle-level records; consolidate into unique companies and vehicle
+fleet aggregates; research websites/phones/possible decision-makers; use AI then human exception review for
+unverifiable/disagreeing records; preserve VIO primary industry and subcategory and validate both; calculate
+priority score; remove/resolve bad records; generate normalized CSV. None of these processes or review queues
+belong in the Upfit Opps MVP.
+INSIDE platform: L2 admin selects the target distributor account, uploads prepared CSV from desktop,
+maps/validates columns, previews add/update counts and errors, then commits an import. Initial and subsequent
+CSVs add new company records and update matching existing records.
+ Use stable distributor-scoped external company ID as preferred upsert key; reject ambiguous matches for
+explicit correction before import rather than silently merging.
+ Preview missing required fields, invalid priority scores, unknown owner emails, bad ZIP formatting, duplicate
+IDs and conflicting source/program metadata. Keep an import audit log and rollback/recovery mechanism.
+ Protect locally edited ownership, confirmed primary decision-maker, activities, opportunity and quote history,
+suppression state, and follow-up dates during updates; an explicit authorized field-level override is required to
+replace these.
+ Company source/program attribution must be immutable enough for defensible manufacturer reporting;
+matching an existing customer to VIO data must not expose past customer interactions to that manufacturer.
+ Priority score is imported on an approximately 0–5 scale, higher is better. No score calculation/recalculation
+happens inside the product. A later CSV may replace the stored value.
+6. Company record and candidate contacts
+Area Required fields / behaviors
+Identity Internal ID, external import ID, distributor ID,
+display/legal name, address, city/state/ZIP, website,
+callable phone, industry primary + subcategory from
+VIO, optional description and locations.
+Fleet and priority Total vehicles, truck count, van count, model/type mix
+if supplied, priority score (0–5), optional short priority
+explanation from imported file.
+Source ownership Program/lead source, original imported cohort,
+assigned sales rep nullable, owner-change audit,
+current cold/customer/opportunity state, suppression
+flag, next eligible date.
+AI-suggested candidates Zero or more imported potential decision-makers,
+each with name, title, optional source URL/date;
+informational only, not counted as verified.
+Primary decision-maker Exactly zero or one confirmed primary person per
+company; rep may select candidate or manually enter
+name, title, phone, email and notes;
+editable/replacable with history.
+Outreach and outcome Last recorded attempt, total attempts, activity feed,
+current follow-up date, touch-base interval (existing
+customers), opportunity event, manual quote
+count/records.
+
+-- 3 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+Identifying a primary decision-maker is different from speaking with that person. AI-suggested candidates never
+count as confirmed. Reps can view all records in the distributor, even those owned by colleagues.
+7. Ownership and company repository
+ CSV import assigns an owner only when an explicit valid owner is provided. Otherwise record remains
+unassigned. There are NO ZIP-based or territory-rule automatic assignments.
+ Distributor Manager can browse, sort, search and filter all companies by ZIP, priority, industry, source, status,
+owner and other relevant fields. Select one, many or all filtered results, then bulk assign, reassign or unassign.
+ Daily queues draw from assigned companies only; unassigned companies remain out of daily queues until
+manager assigns them. The former “auto-claim first daily delivery” approach is removed.
+ Reassignment moves active follow-up visibility and prospective queue eligibility to new owner while keeping
+complete historical activities. Track who changed ownership and when. Bulk reassignment supports rep
+departure.
+ Any rep may access a colleague-owned record and log activity/quote updates; this does not change ownership.
+8. Cold outreach eligibility, priority and queue rules
+ Eligibility first: company assigned to rep, cold-eligible status, not suppressed, due under outcome cadence or
+explicit follow-up, no active opportunity exit, and not already completed for the session.
+ Daily recommended count is manager-configured per rep (e.g. 10 or 20), not a call limit. Reps may continue
+working as many additional prospects as desired.
+ For each recommended cold queue, allocate 70% to highest-priority eligible companies including previously
+contacted due accounts, and 30% to eligible NEVER-CONTACTED companies ranked highest first. If either pool
+is insufficient, fill from the other. Define deterministic rounding for small queues.
+ Specific scheduled follow-up dates override normal outcome cadence and must be surfaced as due reminders
+on/after that date; they should not be silently deferred behind lower priority calls.
+ Log “Skip” means do not record a call and do not count toward target; skip does not change ownership or
+suppress permanently. “Remove from Outreach” keeps company/history but excludes further prospecting
+until manually restored. A Do Not Contact suppression is persistent and must not be reactivated by refresh.
+ Following a recorded outcome, next eligible date is calculated from distributor manager-configured intervals
+(no answer, voicemail, gatekeeper, not interested etc.). Manager settings affect future scheduling, not prior
+activity events.
+ Daily queue is a stable ordered session for a rep; email link can open whole queue or a specific company. Next
+Company moves through list; after initial list is exhausted, Continue Prospecting appends eligible ranked
+prospects without a hard ceiling.
+9. Sales rep experience and consolidated mobile screens
+9.1 Daily email
+Branded email delivered on configured days/time to active reps, showing outreach goal, short prioritized starter
+list, direct company links, and “Open My Queue”. Existing-customer reminders may appear distinctly. No
+leaderboard in emails. Clicking a company navigates to that exact record after session validation.
+9.2 Rep Queue / Dashboard — ONE mobile screen
+ Header with rep name, today’s recorded cold attempts versus target and remaining target, then ranked cards
+for the manager-configured daily cold prospect count.
+
+-- 4 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+ Separate area for existing-customer touch-base reminders and explicit scheduled follow-ups; neither is
+counted against the standard new-cold-prospect target unless a real cold attempt is recorded under that
+program.
+ ZIP Code Prospect Finder: type exactly one five-digit ZIP; display cold contacts in that ZIP, sorted by priority,
+showing name, address, phone, owner and last recorded outreach; searching does NOT reassign records. No
+radius option.
+ Optional team leaderboard section at bottom, manager enable/disable; today/week-to-date/month display and
+raw attempts, percent target reached, decision-makers reached, opportunities identified, and opportunity
+conversion ratio; default week-to-date. No composite performance grade.
+ A Continue Prospecting action is embedded on this screen after target; not a standalone screen.
+9.3 Company Detail — ONE main action screen
+ Company name, priority, address, website, fleet mix, industry, contact details, clickable telephone and optional
+directions link; show current assigned owner and source as appropriate.
+ One confirmed Primary Decision-Maker area with ability to select from AI candidate list or manually
+enter/update name, title, phone/email and notes.
+ Activity summary near top (total recorded attempts, last recorded attempt/outcome, next follow-up), followed
+by reverse-chronological Activity Feed (date, user, outcome, note); no separate manual Add Activity tool.
+ Log Outcome controls live ON this screen: No Answer, Left Voicemail, Spoke to Gatekeeper, Spoke to Decision-
+Maker, Wrong Number; optional notes and follow-up date; an independent Opportunity Identified action/flag
+and Remove from Outreach control.
+ Outcome can request contact details relevant to gatekeeper/decision-maker conversation; save creates
+timestamped activity and updates eligibility/follow-up. Tapping Call alone does not count as outreach.
+ Fixed bottom action navigation: Skip / Save & Next Company (or Next Company after saving); direct progress
+through queue without reopening email. Prevent double submission and show saved confirmation.
+ Reps and managers may record a quote count or quote-issued event against ANY company on the company
+detail record. No price field or stage editor.
+10. Existing-customer touch-base
+L2 imports existing and past customers with independently supplied per-company touch-base interval in days. The
+platform is a reminder safety net, not an authoritative log of all incoming calls/quotes; show “last recorded touch,”
+never claim last actual conversation. Existing-customer reminders appear separately from cold goals. A rep can
+use the standard record outcome action, “Already Contacted” to reset next cadence, or Snooze to defer. Interactions
+not entered in Upfit Opps cannot automatically reset the clock. No integrations with distributor ordering/quoting
+systems.
+11. Opportunity and quote reporting — intentionally minimal
+ Rep flags Opportunity Identified from Company Detail; optionally adds description. No qualification threshold,
+manager approval, stage definitions or pipeline stages.
+ On save, company immediately exits routine cold outreach, preserving owner, source attribution, activity
+history, notes and explicit follow-ups; reporting counts a unique company as opportunity-identified.
+ Any sales rep or distributor manager can manually enter or increment quote count for any company, with
+date and actor audited. No quote matching, automated reconciliation, quote amounts, opportunity values,
+revenue, margins or quote contents.
+ Report number of unique companies with at least one quote separately from total quote events/count. Optional
+Deal Won flag only if retained in MVP without pipeline behavior; do not require deal stages or complex
+workflows.
+
+-- 5 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+ Manufacturer may see only program-attributable company-level quoted indicators / aggregates, never quote
+financials or confidential contents. A quoted event does NOT imply manufacturer products were sold.
+12. Distributor Manager screens and settings
+Manager Overview
+Default post-login screen: team outreach-to-opportunity funnel and rep performance table (period selectable).
+Include recorded attempts, target attainment, identified primary decision-makers, decision-maker conversations,
+identified opportunities, companies quoted. Remove separate “untouched prospects” overview module. Upper-
+right gear opens Manager Settings.
+Manager Settings (single consolidated screen)
+ Sales Team: add/edit/pause/disable sales reps, email, per-rep cold target, daily email eligibility, revoke sessions,
+bulk reassign departed reps.
+ Lead Management: search/filter/sort full repository, inspect details, bulk assign/reassign/unassign, manage
+suppressions. May be a section/tab of the same Settings screen rather than a separate navigation surface.
+ Outreach: manager-adjustable cadence by call outcome, “not interested now” duration (e.g. 60 days), existing-
+customer reminder behavior, rep email schedule; dates explicitly requested by prospect override defaults.
+ Reporting: daily or weekly manager summary email, delivery time, recipients, team and per-rep counts/rates
+with optional trend comparison; no grade.
+ Gamification: optional team leaderboard on/off; available only inside rep mobile dashboard, not outgoing
+emails.
+13. Manufacturer portal (multi-manufacturer by design)
+ L2 creates manufacturers, manufacturer regional reps, and leadership users; associates each distributor’s
+specific manufacturer program with its designated regional rep. A distributor may participate in more than
+one manufacturer program, with independent permissions and source cohorts.
+ Regional rep login shows aggregate performance across only their assigned distributors plus clickable
+Distributor Detail reports. Leadership login shows all distributors/regions belonging to THEIR manufacturer,
+using same two screens with broader scope.
+ Every manufacturer metric is calculated only from source-attributed leads provided under its program AND
+outreach/outcomes attributable to that program. Distributor-sourced existing customers and unrelated
+activities remain invisible.
+ Allowed manufacturer measures: source cohort size, Market Outreach Rate, outreach attempts/ranges,
+primary decision-makers confirmed and reached, opportunities identified, companies quoted, conversion
+rates and time trends.
+ No access to distributor proprietary customer lists, unrelated cold leads, private notes outside permitted
+program reporting, quotes/financial amounts, revenues, margins or competitor-sensitive details. Enforce
+isolation in server queries and exports, not merely UI filtering.
+ If a VIO-sourced prospect later becomes a customer, that status must not grant permanent manufacturer
+access to the distributor’s later, unrelated customer relationship or activities.
+14. KPIs and calculation requirements
+Metric Definition
+Total addressable VIO companies Unique eligible companies in a particular
+manufacturer-distributor source cohort; suppressions
+
+-- 6 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+remain in denominator unless deliberately excluded
+through documented scope change.
+Market Outreach Rate Unique VIO companies with >=1 recorded outreach
+attempt / total addressable VIO companies, multiplied
+by 100; track as a time series.
+Recorded attempts Count of outcomes representing attempted outreach
+(e.g. no answer, voicemail, gatekeeper, decision-
+maker); exclude skips, email opens and call-link clicks.
+Primary decision-makers identified Unique companies with human-confirmed primary
+decision-maker; AI candidates do not count.
+Decision-makers reached Unique companies with a recorded “Spoke to Decision-
+Maker” outcome; distinct from identified.
+Opportunities identified Unique companies with rep-logged opportunity event,
+no manager review.
+Companies quoted Unique companies with >=1 manually recorded quote;
+separate from total number of quotes.
+Quote conversion Companies quoted / addressable VIO companies; may
+also show / companies with recorded outreach.
+Rep target attainment Recorded eligible cold attempts divided by configured
+daily target over working/reporting days.
+Opportunity yield Opportunities identified / decision-maker
+conversations, with underlying numerators and
+denominators shown; avoid dividing by zero.
+All activity reflects what users recorded, not verified telephone carrier logs. Report denominators, time filters,
+scope (manufacturer cohort vs all distributor accounts), unique companies vs event counts, and incomplete data
+clearly. Do not infer market share from these activity ratios.
+15. Data entities, events and background services (MVP engineering contract)
+Entity / service Required behavior
+DistributorTenant + Branding Slug/subdomain unique, logo/colors, admin settings
+and status; strict tenant foreign keys.
+Manufacturer + Program + RegionalAssignment Program-to-distributor mapping and
+manager/leadership access. CompanySource links
+imported VIO company cohort to program without
+leaking unrelated records.
+User + Role + Session Four user categories: L2, distributor manager,
+distributor sales rep, manufacturer
+(regional/leadership permission level). Password and
+email-verification session flows.
+ImportBatch + Company Stable per-tenant IDs; CSV preview, validation, upsert,
+protected fields, import audit, company
+address/industry/fleet/priority, source attribution.
+Candidate + PrimaryDecisionMaker Many imported candidates, one confirmed primary
+per company, confirmation actor/date and changes
+recorded.
+
+-- 7 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+OwnershipHistory Current owner nullable; manager individual/bulk
+changes; preserves previous values and change actor.
+QueueSession + QueueItem Per-rep dated stable cold queue with 70/30 policy,
+immutable delivery history, explicit skips and
+continue beyond initial target.
+ActivityEvent + FollowUp Logged outcomes (actor, timestamp, optional note,
+related company), due date override, outcome-based
+next eligibility, customer-touch reminders.
+Suppression Remove from outreach and durable do-not-contact
+distinct; cannot reactivate DNC through CSV import.
+OpportunityEvent + QuoteEvent Immediate opportunity exit; quote count/events
+manually logged, creator/date, no financials or stages.
+NotificationJob + ReportSnapshot Scheduled branded rep emails and manager
+daily/weekly summaries; delivery/retry/failure
+handling; reproducible metrics.
+AuditLog Import, login, permission, ownership, contact
+confirmation, quote changes, account settings and
+suppression changes.
+Background services required: email/session verification, queue builder/scheduler, touch cadence scheduler,
+notification delivery/retries, CSV validation/upsert, reporting aggregation and event audit. Excluded services: AI
+scraper/enrichment, lead scoring engine, CRM sync, quote-system sync, territory rules, ad/campaign execution.
+16. Mockup production inventory and user journeys
+Mockup Required interaction
+01 Rep Daily Email Branded daily target, starter contacts, direct contact
+links, Open Queue.
+02 Rep Queue / Dashboard (mobile) Target progress, priority list, due customer
+reminders/follow-ups, ZIP finder (exact ZIP), optional
+leaderboard, Continue Prospecting.
+03 Company Detail (mobile) Tap to call, imported context, AI candidate selector,
+confirmed primary, activity feed, log outcomes, date
+override, opportunity/quote entry, fixed next action.
+04 Distributor Manager Login Username/password, recovery path, branded/Upfit
+Opps authentication.
+05 Manager Overview Team funnel and rep performance table, reporting
+period, upper-right gear to settings.
+06 Manager Settings Rep setup/targets, lead management bulk ownership,
+outreach cadences, report settings, email pause,
+leaderboard toggle.
+07 L2 Admin Portal All distributors/manufacturers, create tenant and slug,
+white-label assets, users, manufacturer regional
+assignment, CSV preview/upsert/results.
+08 Manufacturer Overview Regional assigned distributors or leadership-wide
+view; only manufacturer-supplied cohort metrics.
+09 Manufacturer Distributor Detail Single distributor performance within one
+manufacturer program; trends, market outreach, DM,
+
+-- 8 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+opportunities, companies quoted; no proprietary
+figures.
+Mockup journeys: rep email queue company detail log outcome Save & Next Continue Prospecting;	→ → → → →
+manager sign-in Overview Settings bulk assign; L2 new distributor branding/users CSV preview/update	→ → → → →
+ready; regional manufacturer login assigned-distributor summary permitted detail. Mobile widths 375–	→ → →
+430px and desktop 1280–1440px; prioritize legibility, large taps, minimal typing, empty states, validation states and
+white-label tokens.
+17. Commercial package and manufacturer pilot (not application features)
+ Distributor onboarding: $5,000 one-time, covering external L2 data preparation and human verification
+exceptions, initial usable lead dataset, tenant setup, configuration, import and initial training. Scope and
+minimum data quality must be defined contractually.
+ Subscription: $500/month includes first three active sales reps; $85/month per additional active sales rep.
+Initial pricing to be validated after first 5–10 accounts. No advisory services bundled.
+ Included benefit: monthly Upfit Opps distributor sales-insights email with anonymized cross-network lessons
+and prospecting best practices, without exposing distributor-specific business information.
+ L2 Digital advisory, email/content campaigns, CRM work, marketing automation and advertising are separate
+optional services with separately quoted fees. Not features of platform MVP.
+ Substantial new VIO data preparation / annual refresh may be quoted separately rather than automatically
+included in monthly subscription.
+ Initial Adrian Steel proposal: free manufacturer portal pilot for approximately 3–6 months in exchange for VIO
+cohorts, referrals and active distributor adoption encouragement; later optional negotiated paid manufacturer
+enhanced reporting license; proprietary distributor information remains off-limits at all tiers.
+ L2 owns software IP, reserves non-exclusive multi-manufacturer rights. Confirm VIO licensing, distributor
+source rights, consent and manufacturer report permissions in written agreements.
+18. Acceptance scenarios — must pass before pilot launch
+ An L2 admin creates a distributor slug, configures logo/colors, manager and reps; the subdomain resolves
+correctly and cannot expose a different tenant.
+ CSV preview shows create/update/error totals. Reimport updates company fleet/priority/import fields but
+preserves owner changes, activities, quote counts and confirmed primary decision-maker unless explicitly
+permitted.
+ An imported unassigned record does not appear in rep queues; manager filters by ZIP and bulk assigns, after
+which it becomes eligible for owner’s queue.
+ Rep email opens queue or exact company after verification; persistent session works on repeat visits; revoked
+rep access fails.
+ Queue with 20 cold prospects starts with 14 highest-priority eligible and 6 never-contacted when both pools
+have supply. Never-contacted pool ranked by imported score.
+ Tap-to-call without saved outcome does not count as an attempt. Skip does not count. Saved
+voicemail/gatekeeper/decision-maker outcomes create correctly timestamped activity and history.
+ Rep confirms one candidate as Primary Decision-Maker; suggested alternatives remain visible. Confirmation is
+counted separately from actual decision-maker conversation.
+ Rep sets explicit follow-up date two weeks ahead; default cadence does not surface company prematurely; due
+reminder appears on date.
+
+-- 9 of 10 --
+
+L2 DIGITAL / UPFIT OPPS
+Confidential • MVP development and mockup specification • November 19, 2026
+ Rep flags opportunity; the company immediately leaves cold queues, yet is retained in source-based funnel
+reports. No manager approval or stage field.
+ Sales rep updates quote count on another rep-owned company; record owner does not change; audit shows
+editor and timestamp.
+ ZIP finder returns only exact-ZIP cold records sorted by priority, does not assign ownership, and opens
+company detail.
+ Manager email shows team/per-rep counts and simple conversion numbers; leaderboard disabled means no
+peer metrics shown in rep UI; no leaderboard in emails.
+ Regional manufacturer viewer can see only assigned distributor programs and only related VIO activity. Other
+manufacturer, past-customer and dollar/quote financial information is inaccessible via every endpoint/export.
+19. Items deliberately deferred or to validate with design/engineering
+ No enrichment or priority algorithm inside product. No automatic territory routing, unassigned lead claiming
+or quote-system matching.
+ No formal sales stages, pipeline forecasting, revenue/quote value capture, manual free-form activity feature,
+CRM/ERP integrations or marketing campaign execution.
+ Future: optional voice/email-reply logging, dynamic propensity scoring, integrations, richer analytics,
+manufacturer paid premium tools, dedicated customer-touch automation.
+ Implementation parameters needing engineering confirmation: exact CSV column contract and upsert key;
+choice of manager/manufacturer authentication implementation; queue rounding for small targets; session
+expiration policy; backup and retention policy; complete opt-out handling; allowed manufacturer field
+visibility.
+ Design prerequisite: get a verified screenshot or approved design tokens from current ptc.upfitopps.com/cost-
+calculator to match existing white-label look.
+End of revised development PRD. Product decisions above supersede conflicting language in the November 18
+working draft.
+
+-- 10 of 10 --
+

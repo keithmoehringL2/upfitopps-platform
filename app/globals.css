@@ -1,0 +1,64 @@
+:root {
+  /* Type */
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+
+  /* Text + neutrals (Broadsheet tokens from the design handoff) */
+  --text: #201e1d;
+  --neutral-100: #f8f4f4;
+  --neutral-200: #eae7e7;
+  --neutral-300: #d7d3d3;
+  --neutral-600: #7d7979;
+  --neutral-700: #605d5d;
+  --neutral-800: #444141;
+  --neutral-900: #2d2b2b;
+  --surface: #eae9e9;
+  --bg: #ffffff;
+  --divider: color-mix(in srgb, #201e1d 16%, transparent);
+
+  /* Platform-default accent ramp (distributor primary overrides this at runtime
+     via a scoped <style>; see lib/brand/ramp.ts). Default primary = #c8102e. */
+  --accent-100: color-mix(in oklch, #c8102e 9%, white);
+  --accent-200: color-mix(in oklch, #c8102e 18%, white);
+  --accent-300: color-mix(in oklch, #c8102e 34%, white);
+  --accent-400: color-mix(in oklch, #c8102e 62%, white);
+  --accent-500: #c8102e;
+  --accent-600: color-mix(in oklch, #c8102e 86%, black);
+  --accent-700: color-mix(in oklch, #c8102e 72%, black);
+  --accent-800: color-mix(in oklch, #c8102e 56%, black);
+  --accent-900: color-mix(in oklch, #c8102e 40%, black);
+
+  /* Radius + shadows */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --shadow-sm: 0 1px 2px #2d2b2b24;
+  --shadow-md: 0 3px 10px #2d2b2b29;
+  --shadow-lg: 0 12px 32px #2d2b2b38;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent-700);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}

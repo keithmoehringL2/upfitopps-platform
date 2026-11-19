@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/styles.css">
+<script src="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<style>
+body{margin:0;background:#fff}
+a{color:var(--color-accent-700)}
+a:hover{color:var(--color-accent-800)}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; font-family:var(--font-body); color:var(--color-text); background:var(--color-bg)">
+
+  <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:10px 48px; font-size:13px; color:var(--color-neutral-700); box-shadow:0 1px 0 var(--color-divider)">
+    <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase">Prototype · Phase 4 · L2 Digital Admin</span>
+    <div style="display:flex; gap:4px; flex-wrap:wrap">
+      <sc-for list="{{ jumps }}" as="j" hint-placeholder-count="5">
+        <div onClick="{{ j.go }}" class="btn btn-ghost" style="font-size:13px; font-weight:400; padding:4px 8px">{{ j.label }}</div>
+      </sc-for>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:14px; align-items:center">
+      <a href="Upfit Opps Rep Mobile.dc.html" style="font-size:13px">Sales Rep →</a>
+      <a href="Upfit Opps Manager.dc.html" style="font-size:13px">Manager →</a>
+      <a href="Upfit Opps Manufacturer.dc.html" style="font-size:13px">Manufacturer →</a>
+      <div onClick="{{ reset }}" class="btn btn-ghost" style="font-size:13px; font-weight:400; padding:4px 8px"><i class="ph-duotone ph-arrow-counter-clockwise"></i><span>Reset</span></div>
+    </div>
+  </div>
+
+  <header style="display:flex; align-items:center; gap:40px; padding:20px 48px; box-shadow:0 1px 0 var(--color-divider)">
+    <div style="display:flex; align-items:baseline; gap:10px">
+      <span style="font-size:22px; font-weight:600; color:var(--color-accent)">Upfit Opps</span>
+      <span style="font-size:13px; color:var(--color-neutral-700)">L2 Admin</span>
+    </div>
+    <nav style="display:flex; gap:28px">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="2">
+        <div onClick="{{ n.go }}" style="cursor:pointer; font-size:16px; padding:6px 0; color:{{ n.color }}; box-shadow:{{ n.line }}" style-hover="color:var(--color-accent-700)">{{ n.label }}</div>
+      </sc-for>
+    </nav>
+    <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; line-height:1.3"><span style="font-size:14px">Ryan Patel</span><span style="font-size:12px; color:var(--color-neutral-700)">L2 Digital</span></div>
+  </header>
+
+  <main style="max-width:1320px; padding:44px 48px 120px; display:flex; flex-direction:column; gap:40px">
+
+    <!-- 07 DISTRIBUTOR LIST -->
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:28px">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap">
+          <div style="display:flex; flex-direction:column; gap:6px"><span style="font-size:13px; color:var(--color-neutral-700)">{{ distCount }}</span><h1 style="margin:0">Distributors</h1></div>
+          <div onClick="{{ startWizard }}" class="btn btn-primary" style="min-height:46px; font-size:15px"><i class="ph-duotone ph-plus"></i><span>New distributor</span></div>
+        </div>
+        <input class="input" value="{{ q }}" onChange="{{ onQ }}" placeholder="Search distributors or subdomains" style="max-width:420px; min-height:44px; font-size:15px">
+        <div style="overflow-x:auto">
+          <table class="table" style="font-size:15px; min-width:1040px">
+            <thead><tr><th>Distributor</th><th>Status</th><th>Manager</th><th style="text-align:right">Reps</th><th>Programs</th><th style="text-align:right">Companies</th><th>Last import</th><th></th></tr></thead>
+            <tbody>
+              <sc-for list="{{ distRows }}" as="d" hint-placeholder-count="6">
+                <tr onClick="{{ d.open }}" style="cursor:pointer">
+                  <td style="padding:13px 10px"><div style="display:flex; align-items:center; gap:12px"><div style="width:34px; height:34px; flex:none; border-radius:var(--radius-md); background:{{ d.color }}; color:#fff; display:grid; place-items:center; font-weight:600; font-size:14px">{{ d.initial }}</div><div style="display:flex; flex-direction:column"><span style="font-weight:600">{{ d.name }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ d.host }}</span></div></div></td>
+                  <td><span class="tag {{ d.stClass }}">{{ d.status }}</span></td>
+                  <td>{{ d.manager }}</td><td style="text-align:right">{{ d.reps }}</td><td>{{ d.programs }}</td><td style="text-align:right">{{ d.companies }}</td><td style="font-size:14px; color:var(--color-neutral-800)">{{ d.last }}</td>
+                  <td><i class="ph-duotone ph-caret-right" style="color:var(--color-neutral-600)"></i></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- MANUFACTURERS -->
+    <sc-if value="{{ isMfr }}">
+      <div style="display:flex; flex-direction:column; gap:40px">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap">
+          <div style="display:flex; flex-direction:column; gap:6px"><span style="font-size:13px; color:var(--color-neutral-700)">Each manufacturer sees only its own program data</span><h1 style="margin:0">Manufacturers</h1></div>
+          <div style="display:flex; gap:10px; align-items:end">
+            <div class="field"><label>New manufacturer</label><input class="input" value="{{ newMfr }}" onChange="{{ onNewMfr }}" placeholder="Manufacturer name" style="min-height:44px; width:240px"></div>
+            <button onClick="{{ addMfr }}" disabled="{{ newMfrInvalid }}" class="btn btn-primary" style="min-height:44px"><i class="ph-duotone ph-plus"></i><span>Add</span></button>
+          </div>
+        </div>
+        <sc-for list="{{ mfrs }}" as="m" hint-placeholder-count="1">
+          <div style="display:flex; flex-direction:column; gap:24px">
+            <h2 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:10px"><i class="ph-duotone ph-factory" style="font-size:30px"></i><span>{{ m.name }}</span></h2>
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:56px; align-items:start">
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h4 style="margin:0">Portal users</h4>
+                <sc-for list="{{ m.users }}" as="u" hint-placeholder-count="2">
+                  <div style="display:flex; justify-content:space-between; gap:12px; align-items:baseline"><div style="display:flex; flex-direction:column"><span style="font-weight:600">{{ u.name }}</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ u.email }}</span></div><span class="tag {{ u.cls }}">{{ u.roleLabel }}</span></div>
+                </sc-for>
+                <sc-if value="{{ m.noUsers }}"><span style="font-size:14px; color:var(--color-neutral-700)">No users yet.</span></sc-if>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; padding-top:8px">
+                  <input class="input" value="{{ m.nu.name }}" onChange="{{ m.onName }}" placeholder="Name" style="min-height:40px">
+                  <input class="input" value="{{ m.nu.email }}" onChange="{{ m.onEmail }}" placeholder="Email" style="min-height:40px">
+                  <select class="input" value="{{ m.nu.role }}" onChange="{{ m.onRole }}" style="min-height:40px"><option value="Regional">Regional rep</option><option value="Leadership">Leadership</option></select>
+                  <button onClick="{{ m.addUser }}" disabled="{{ m.nuInvalid }}" class="btn btn-secondary" style="min-height:40px"><i class="ph-duotone ph-user-plus"></i><span>Add user</span></button>
+                </div>
+                <span style="font-size:12px; color:var(--color-neutral-700)">Leadership sees every distributor in this manufacturer's programs. Regional reps see only the programs assigned to them.</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h4 style="margin:0">Program assignments</h4>
+                <sc-if value="{{ m.hasProgs }}">
+                  <table class="table" style="font-size:15px">
+                    <thead><tr><th>Distributor</th><th>Cohort</th><th>Regional rep</th></tr></thead>
+                    <tbody>
+                      <sc-for list="{{ m.progs }}" as="p" hint-placeholder-count="4">
+                        <tr><td style="padding:10px">{{ p.dist }}</td><td style="font-size:14px; color:var(--color-neutral-800)">{{ p.cohort }}</td>
+                          <td><select class="input" value="{{ p.rep }}" onChange="{{ p.setRep }}" style="min-height:38px; width:190px"><option value="">Unassigned</option><sc-for list="{{ m.regionalNames }}" as="r" hint-placeholder-count="0"><option value="{{ r }}">{{ r }}</option></sc-for></select></td></tr>
+                      </sc-for>
+                    </tbody>
+                  </table>
+                </sc-if>
+                <sc-if value="{{ m.noProgs }}"><span style="font-size:14px; color:var(--color-neutral-700)">No distributors in this program yet. Add the program from a distributor's Programs tab.</span></sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- WIZARD / ACCOUNT HEADERS -->
+    <sc-if value="{{ isWizard }}">
+      <div style="display:flex; flex-direction:column; gap:22px">
+        <div onClick="{{ goList }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; font-size:15px"><i class="ph-duotone ph-caret-left"></i><span>Distributors</span></div>
+        <h1 style="margin:-8px 0 0">New distributor</h1>
+        <sc-if value="{{ notCreated }}">
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <sc-for list="{{ wizSteps }}" as="w" hint-placeholder-count="5">
+              <div onClick="{{ w.go }}" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:8px 14px 8px 8px; border-radius:var(--radius-md); background:{{ w.bg }}">
+                <span style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:600; background:{{ w.dotBg }}; color:{{ w.dotFg }}">{{ w.n }}</span>
+                <span style="font-size:15px; font-weight:{{ w.weight }}">{{ w.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAccount }}">
+      <div style="display:flex; flex-direction:column; gap:20px">
+        <div onClick="{{ goList }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; font-size:15px"><i class="ph-duotone ph-caret-left"></i><span>Distributors</span></div>
+        <div style="display:flex; align-items:center; gap:18px; margin-top:-8px">
+          <div style="width:56px; height:56px; flex:none; border-radius:var(--radius-lg); background:{{ acc.color }}; color:#fff; display:grid; place-items:center; font-weight:600; font-size:24px; overflow:hidden">
+            <sc-if value="{{ acc.hasLogo }}"><div role="img" aria-label="Logo" style="background-image:{{ acc.logoCss }}; background-size:contain; background-repeat:no-repeat; background-position:center; width:100%; height:100%; background-color:#fff"></div></sc-if>
+            <sc-if value="{{ acc.noLogo }}"><span>{{ acc.initial }}</span></sc-if>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <h1 style="margin:0">{{ acc.name }}</h1>
+            <div style="display:flex; gap:10px; align-items:center"><a href="{{ acc.url }}" target="_blank" style="font-size:15px">{{ acc.host }}</a><span class="tag {{ acc.stClass }}">{{ acc.status }}</span></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:28px; box-shadow:inset 0 -1px 0 var(--color-divider)">
+          <sc-for list="{{ accTabs }}" as="t" hint-placeholder-count="5">
+            <div onClick="{{ t.go }}" style="cursor:pointer; font-size:16px; padding:10px 0; color:{{ t.color }}; box-shadow:{{ t.line }}" style-hover="color:var(--color-accent-700)">{{ t.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- WIZARD STEP 1: ACCOUNT -->
+    <sc-if value="{{ showStepAccount }}">
+      <div style="display:flex; flex-direction:column; gap:22px; max-width:620px">
+        <div style="display:flex; flex-direction:column; gap:4px"><h3 style="margin:0; color:var(--color-accent-700)">Account</h3><span style="font-size:15px; color:var(--color-neutral-800)">The distributor's name and the subdomain their team will use.</span></div>
+        <div class="field"><label>Distributor name</label><input class="input" value="{{ dr.name }}" onChange="{{ onName }}" placeholder="e.g. Metro Upfit &amp; Equipment" style="min-height:46px; font-size:16px"></div>
+        <div class="field"><label>Subdomain</label>
+          <div style="display:flex; align-items:center; gap:0">
+            <input class="input" value="{{ dr.slug }}" onChange="{{ onSlug }}" style="min-height:46px; font-size:16px; border-radius:var(--radius-md) 0 0 var(--radius-md)">
+            <span style="min-height:46px; display:flex; align-items:center; padding:0 14px; background:var(--color-neutral-200); border-radius:0 var(--radius-md) var(--radius-md) 0; font-size:16px; white-space:nowrap">.upfitopps.com</span>
+          </div>
+          <span style="font-size:13px; padding-top:6px; display:flex; align-items:center; gap:6px; color:{{ slugColor }}"><i class="ph-duotone {{ slugIcon }}"></i><span>{{ slugMsg }}</span></span>
+        </div>
+        <span style="font-size:13px; color:var(--color-neutral-700)">Wildcard DNS and HTTPS cover every subdomain, so no manual DNS setup is needed.</span>
+      </div>
+    </sc-if>
+
+    <!-- SHARED: BRANDING -->
+    <sc-if value="{{ showBranding }}">
+      <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:64px; align-items:start">
+        <div style="display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; flex-direction:column; gap:4px"><h3 style="margin:0; color:var(--color-accent-700)">Branding</h3><span style="font-size:15px; color:var(--color-neutral-800)">Logo and colors carry through the rep app, emails and manager screens.</span></div>
+          <div class="field"><label>Logo</label>
+            <div style="display:flex; align-items:center; gap:14px">
+              <div style="width:120px; height:64px; border-radius:var(--radius-md); background:var(--color-neutral-100); display:grid; place-items:center; overflow:hidden">
+                <sc-if value="{{ drHasLogo }}"><div role="img" aria-label="Logo" style="background-image:{{ drLogoCss }}; background-size:contain; background-repeat:no-repeat; background-position:center; width:100%; height:100%"></div></sc-if>
+                <sc-if value="{{ drNoLogo }}"><i class="ph-duotone ph-image" style="font-size:26px; color:var(--color-neutral-600)"></i></sc-if>
+              </div>
+              <label class="btn btn-secondary" style="min-height:44px; cursor:pointer"><i class="ph-duotone ph-upload-simple"></i><span>{{ logoBtn }}</span><input type="file" accept="image/png,image/svg+xml,image/jpeg" onChange="{{ onLogo }}" style="display:none"></label>
+              <sc-if value="{{ drHasLogo }}"><div onClick="{{ removeLogo }}" class="btn btn-ghost">Remove</div></sc-if>
+            </div>
+            <span style="font-size:12px; color:var(--color-neutral-700); padding-top:6px">PNG or SVG on a transparent background, at least 400px wide.</span>
+          </div>
+          <div class="field"><label>Primary color</label>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+              <sc-for list="{{ primarySw }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.pick }}" style="cursor:pointer; width:36px; height:36px; border-radius:50%; background:{{ c.hex }}; box-shadow:{{ c.ring }}"></div></sc-for>
+              <input class="input" value="{{ dr.color }}" onChange="{{ onColor }}" style="width:110px; min-height:40px; font-family:monospace">
+            </div>
+            <span style="font-size:13px; padding-top:6px; color:{{ contrastColor }}">{{ contrastMsg }}</span>
+          </div>
+          <div class="field"><label>Secondary color</label>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+              <sc-for list="{{ secondarySw }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.pick }}" style="cursor:pointer; width:36px; height:36px; border-radius:50%; background:{{ c.hex }}; box-shadow:{{ c.ring }}"></div></sc-for>
+              <input class="input" value="{{ dr.color2 }}" onChange="{{ onColor2 }}" style="width:110px; min-height:40px; font-family:monospace">
+            </div>
+            <span style="font-size:12px; color:var(--color-neutral-700); padding-top:6px">Used sparingly, for opportunity flags and warnings.</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">Preview</span>
+          <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap">
+            <div style="width:250px; border-radius:28px; padding:18px 16px 22px; box-shadow:var(--shadow-md); display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; align-items:center; justify-content:space-between; height:30px">
+                <sc-if value="{{ drHasLogo }}"><div role="img" aria-label="Logo" style="background-image:{{ drLogoCss }}; background-size:contain; background-repeat:no-repeat; background-position:center; width:140px; height:28px; background-position:left center"></div></sc-if>
+                <sc-if value="{{ drNoLogo }}"><span style="font-size:15px; font-weight:600; color:{{ dr.color }}">{{ previewName }}</span></sc-if>
+                <span style="width:24px; height:24px; border-radius:50%; background:var(--color-neutral-200)"></span>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:4px"><span style="font-size:34px; font-weight:600; line-height:1">4</span><span style="font-size:15px; color:var(--color-neutral-700)">/ 10</span></div>
+              <div style="display:flex; gap:3px">
+                <sc-for list="{{ previewSegs }}" as="g" hint-placeholder-count="10"><div style="flex:1; height:8px; border-radius:2px; background:{{ g.bg }}"></div></sc-for>
+              </div>
+              <div style="min-height:38px; border-radius:var(--radius-md); background:{{ dr.color }}; color:#fff; display:grid; place-items:center; font-size:14px; font-weight:600">Start</div>
+              <span style="font-size:14px; font-weight:600; color:{{ dr.color }}">Cold Prospects</span>
+              <div style="display:flex; justify-content:space-between; font-size:13px"><span>Huron Valley Plumbing</span><strong>4.8</strong></div>
+              <div style="display:flex; justify-content:space-between; font-size:13px"><span>Washtenaw Electric</span><strong>4.6</strong></div>
+              <span style="align-self:flex-start; font-size:11px; padding:3px 8px; border-radius:2px; background:{{ dr.color2 }}; color:#fff">Opportunity</span>
+            </div>
+            <div style="width:250px; border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-md); display:flex; flex-direction:column; gap:10px">
+              <span style="font-size:11px; color:var(--color-neutral-700)">Daily email</span>
+              <sc-if value="{{ drHasLogo }}"><div role="img" aria-label="Logo" style="background-image:{{ drLogoCss }}; background-size:contain; background-repeat:no-repeat; background-position:center; width:140px; height:26px; background-position:left center"></div></sc-if>
+              <sc-if value="{{ drNoLogo }}"><span style="font-size:16px; font-weight:600; color:{{ dr.color }}">{{ previewName }}</span></sc-if>
+              <span style="font-size:17px; font-weight:600">Morning Prospect List</span>
+              <span style="font-size:13px; text-decoration:underline; color:{{ dr.color }}">Huron Valley Plumbing</span>
+              <span style="font-size:13px; text-decoration:underline; color:{{ dr.color }}">Washtenaw Electric</span>
+              <div style="min-height:34px; border-radius:var(--radius-md); background:{{ dr.color }}; color:#fff; display:grid; place-items:center; font-size:13px; font-weight:600">Open My Queue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- SHARED: USERS -->
+    <sc-if value="{{ showUsers }}">
+      <div style="display:flex; flex-direction:column; gap:32px; max-width:900px">
+        <div style="display:flex; flex-direction:column; gap:4px"><h3 style="margin:0; color:var(--color-accent-700)">Users</h3><span style="font-size:15px; color:var(--color-neutral-800)">The manager signs in with a username and password. Reps are passwordless and sign in from their daily email.</span></div>
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <h4 style="margin:0">Distributor manager</h4>
+          <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+            <div class="field"><label>Name</label><input class="input" value="{{ dr.mgrName }}" onChange="{{ onMgrName }}" style="min-height:44px"></div>
+            <div class="field"><label>Email</label><input class="input" value="{{ dr.mgrEmail }}" onChange="{{ onMgrEmail }}" style="min-height:44px"></div>
+            <div class="field"><label>Username</label><input class="input" value="{{ dr.mgrUser }}" onChange="{{ onMgrUser }}" style="min-height:44px"></div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <h4 style="margin:0">Sales reps</h4>
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 110px 40px; gap:10px; font-size:12px; color:var(--color-neutral-700)"><span>Name</span><span>Email</span><span>Daily target</span><span></span></div>
+          <sc-for list="{{ repEdit }}" as="r" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 110px 40px; gap:10px; align-items:center">
+              <input class="input" value="{{ r.name }}" onChange="{{ r.onName }}" placeholder="Name" style="min-height:40px">
+              <input class="input" value="{{ r.email }}" onChange="{{ r.onEmail }}" placeholder="name@company.com" style="min-height:40px">
+              <input class="input" type="number" min="1" value="{{ r.target }}" onChange="{{ r.onTarget }}" style="min-height:40px">
+              <div onClick="{{ r.remove }}" class="btn btn-ghost btn-icon" title="Remove" style="color:var(--color-accent-2-700)"><i class="ph-duotone ph-trash" style="font-size:18px"></i></div>
+            </div>
+          </sc-for>
+          <div onClick="{{ addRepRow }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0"><i class="ph-duotone ph-plus"></i><span>Add rep</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- SHARED: PROGRAMS -->
+    <sc-if value="{{ showPrograms }}">
+      <div style="display:flex; flex-direction:column; gap:24px; max-width:760px">
+        <div style="display:flex; flex-direction:column; gap:4px"><h3 style="margin:0; color:var(--color-accent-700)">Manufacturer programs</h3><span style="font-size:15px; color:var(--color-neutral-800)">Each program links a manufacturer's VIO cohort to this distributor and to one regional rep.</span></div>
+        <sc-for list="{{ progEdit }}" as="p" hint-placeholder-count="1">
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <label style="display:flex; align-items:center; gap:12px; cursor:pointer; font-size:17px; font-weight:600"><input type="checkbox" checked="{{ p.on }}" onChange="{{ p.toggle }}" style="width:20px; height:20px; accent-color:var(--color-accent)"><span>{{ p.name }} VIO program</span></label>
+            <sc-if value="{{ p.on }}">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-left:32px">
+                <div class="field"><label>Cohort name</label><input class="input" value="{{ p.cohort }}" onChange="{{ p.onCohort }}" style="min-height:44px"></div>
+                <div class="field"><label>Regional rep</label><select class="input" value="{{ p.rep }}" onChange="{{ p.onRep }}" style="min-height:44px"><option value="">Unassigned</option><sc-for list="{{ p.reps }}" as="r" hint-placeholder-count="0"><option value="{{ r }}">{{ r }}</option></sc-for></select></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <span style="font-size:13px; color:var(--color-neutral-700)">Manufacturer reports count only companies imported under that program's source code. The distributor's own customers are never visible to the manufacturer.</span>
+      </div>
+    </sc-if>
+
+    <!-- WIZARD STEP 5: REVIEW -->
+    <sc-if value="{{ showReview }}">
+      <div style="display:flex; flex-direction:column; gap:24px; max-width:720px">
+        <h3 style="margin:0; color:var(--color-accent-700)">Review</h3>
+        <div style="display:grid; grid-template-columns:180px 1fr; gap:14px 24px; font-size:15px">
+          <sc-for list="{{ reviewRows }}" as="r" hint-placeholder-count="6">
+            <span style="color:var(--color-neutral-700)">{{ r.k }}</span><span>{{ r.v }}</span>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- WIZARD: CREATED -->
+    <sc-if value="{{ showCreated }}">
+      <div style="display:flex; flex-direction:column; gap:24px; max-width:720px">
+        <i class="ph-duotone ph-check-circle" style="font-size:48px; color:var(--color-accent)"></i>
+        <h2 style="margin:0">{{ createdTitle }}</h2>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:15px">
+          <sc-for list="{{ createdChecks }}" as="c" hint-placeholder-count="4">
+            <div style="display:flex; gap:10px; align-items:center"><i class="ph-duotone ph-check" style="color:var(--color-accent-700)"></i><span>{{ c }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:flex; gap:10px; padding-top:8px">
+          <div onClick="{{ importForCreated }}" class="btn btn-primary" style="min-height:46px"><i class="ph-duotone ph-file-csv"></i><span>Import companies</span></div>
+          <div onClick="{{ openCreated }}" class="btn btn-secondary" style="min-height:46px">Open account</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showWizFooter }}">
+      <div style="display:flex; gap:10px; padding-top:12px">
+        <sc-if value="{{ canBack }}"><div onClick="{{ wizBack }}" class="btn btn-secondary" style="min-height:46px">Back</div></sc-if>
+        <button onClick="{{ wizNext }}" disabled="{{ nextDisabled }}" class="btn btn-primary" style="min-height:46px; min-width:140px">{{ nextLabel }}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showAccSave }}">
+      <div style="display:flex; gap:10px; align-items:center; padding-top:12px">
+        <button onClick="{{ saveAcc }}" disabled="{{ accClean }}" class="btn btn-primary" style="min-height:46px">Save changes</button>
+        <button onClick="{{ discardAcc }}" disabled="{{ accClean }}" class="btn btn-secondary" style="min-height:46px">Discard</button>
+        <span style="font-size:13px; color:var(--color-neutral-700)">{{ accDirtyLabel }}</span>
+      </div>
+    </sc-if>
+
+    <!-- ACCOUNT: OVERVIEW -->
+    <sc-if value="{{ showAccOverview }}">
+      <div style="display:flex; flex-direction:column; gap:44px">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:32px">
+          <sc-for list="{{ accStats }}" as="s" hint-placeholder-count="5">
+            <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ s.label }}</span><span style="font-size:40px; font-weight:600; line-height:1">{{ s.value }}</span><span style="font-size:13px; color:var(--color-neutral-800)">{{ s.sub }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:64px; align-items:start">
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <h4 style="margin:0">Account status</h4>
+            <div class="seg" style="align-self:flex-start">
+              <sc-for list="{{ statusOpts }}" as="o" hint-placeholder-count="3"><label class="seg-opt" style="padding:9px 16px; font-size:14px"><input type="radio" name="acst" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for>
+            </div>
+            <span style="font-size:13px; color:var(--color-neutral-700)">Paused accounts keep their data. Reps stop receiving emails and can't sign in.</span>
+            <a href="Upfit Opps Manager.dc.html" style="font-size:15px; padding-top:8px">Open this distributor's manager view →</a>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <h4 style="margin:0">Recent audit log</h4>
+            <sc-for list="{{ acc.audit }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex; flex-direction:column"><span style="font-size:15px">{{ a.what }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ a.when }} · {{ a.by }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ACCOUNT: IMPORTS -->
+    <sc-if value="{{ showAccImports }}">
+      <div style="display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px">
+          <div style="display:flex; flex-direction:column; gap:4px"><h3 style="margin:0; color:var(--color-accent-700)">CSV imports</h3><span style="font-size:15px; color:var(--color-neutral-800)">Prepared company files from L2's data team. Each import adds new companies and updates matching ones.</span></div>
+          <div onClick="{{ startImport }}" class="btn btn-primary" style="min-height:46px"><i class="ph-duotone ph-file-csv"></i><span>New CSV import</span></div>
+        </div>
+        <sc-if value="{{ acc.hasImports }}">
+          <table class="table" style="font-size:15px">
+            <thead><tr><th>Import</th><th>File</th><th>By</th><th style="text-align:right">Created</th><th style="text-align:right">Updated</th><th style="text-align:right">Skipped</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <sc-for list="{{ acc.imports }}" as="i" hint-placeholder-count="2">
+                <tr><td style="padding:12px 10px"><div style="display:flex; flex-direction:column"><span style="font-weight:600">#{{ i.id }}</span><span style="font-size:12px; color:var(--color-neutral-700)">{{ i.when }}</span></div></td><td style="font-size:14px">{{ i.file }}</td><td>{{ i.by }}</td><td style="text-align:right">{{ i.created }}</td><td style="text-align:right">{{ i.updated }}</td><td style="text-align:right">{{ i.skipped }}</td><td><span class="tag {{ i.stClass }}">{{ i.status }}</span></td>
+                  <td><sc-if value="{{ i.canRollback }}"><div onClick="{{ i.rollback }}" class="btn btn-ghost" style="font-size:13px; color:var(--color-accent-2-700)">Roll back</div></sc-if></td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </sc-if>
+        <sc-if value="{{ acc.noImports }}"><div style="display:flex; flex-direction:column; gap:6px; padding:20px 0"><span style="font-size:17px; font-weight:600">No companies yet</span><span style="font-size:15px; color:var(--color-neutral-800)">Import the prepared CSV to load this distributor's companies. Nothing appears in rep queues until companies are assigned.</span></div></sc-if>
+      </div>
+    </sc-if>
+
+    <!-- CSV IMPORT -->
+    <sc-if value="{{ isImport }}">
+      <div style="display:flex; flex-direction:column; gap:32px">
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div onClick="{{ backFromImport }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; font-size:15px"><i class="ph-duotone ph-caret-left"></i><span>{{ imp.distName }}</span></div>
+          <h1 style="margin:-6px 0 0">Import companies</h1>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <sc-for list="{{ impSteps }}" as="w" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; gap:10px; padding:8px 14px 8px 8px; border-radius:var(--radius-md); background:{{ w.bg }}">
+                <span style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:600; background:{{ w.dotBg }}; color:{{ w.dotFg }}">{{ w.n }}</span>
+                <span style="font-size:15px; font-weight:{{ w.weight }}">{{ w.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{ impUpload }}">
+          <div style="display:flex; flex-direction:column; gap:20px; max-width:720px">
+            <label style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:10px; padding:48px 24px; border:2px dashed var(--color-neutral-400); border-radius:var(--radius-lg); text-align:center" style-hover="border-color:var(--color-accent); background:var(--color-accent-100)">
+              <i class="ph-duotone ph-file-csv" style="font-size:44px; color:var(--color-accent)"></i>
+              <span style="font-size:17px; font-weight:600">Choose a CSV file</span>
+              <span style="font-size:14px; color:var(--color-neutral-800)">Prepared by L2's data team. UTF-8, one row per company.</span>
+              <input type="file" accept=".csv,text/csv" onChange="{{ onFile }}" style="display:none">
+            </label>
+            <div style="display:flex; align-items:center; gap:12px"><span style="font-size:14px; color:var(--color-neutral-700)">Or</span><div onClick="{{ useSample }}" class="btn btn-secondary" style="min-height:44px">Use sample file</div></div>
+            <sc-if value="{{ imp.hasFile }}">
+              <div style="display:flex; align-items:center; gap:12px; font-size:15px"><i class="ph-duotone ph-file-text" style="font-size:22px; color:var(--color-accent-700)"></i><span style="font-weight:600">{{ imp.file }}</span><span style="color:var(--color-neutral-700)">{{ imp.rowsLabel }}</span></div>
+            </sc-if>
+            <span style="font-size:13px; color:var(--color-neutral-700)">This prototype previews the sample file's contents whichever file you choose.</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ impMap }}">
+          <div style="display:flex; flex-direction:column; gap:18px">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap">
+              <span style="font-size:15px; color:var(--color-neutral-800)">{{ mapSummary }}</span>
+              <span style="font-size:14px; color:var(--color-neutral-800)">Matching key: <strong>external_id</strong>, scoped to this distributor</span>
+            </div>
+            <table class="table" style="font-size:15px">
+              <thead><tr><th>CSV column</th><th>Sample value</th><th>Maps to</th><th></th></tr></thead>
+              <tbody>
+                <sc-for list="{{ mapRows }}" as="m" hint-placeholder-count="10">
+                  <tr><td style="padding:10px; font-family:monospace; font-size:14px">{{ m.col }}</td><td style="font-size:14px; color:var(--color-neutral-800)">{{ m.sample }}</td>
+                    <td><select class="input" value="{{ m.to }}" onChange="{{ m.set }}" style="min-height:38px; width:260px"><option value="">Don't import</option><sc-for list="{{ fieldOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o.k }}">{{ o.l }}</option></sc-for></select></td>
+                    <td><sc-if value="{{ m.req }}"><span class="tag tag-accent">Required</span></sc-if></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{ hasMissingReq }}"><span style="font-size:14px; color:var(--color-accent-2-700)">{{ missingReqMsg }}</span></sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ impPreview }}">
+          <div style="display:flex; flex-direction:column; gap:40px">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:32px">
+              <sc-for list="{{ previewCounts }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ p.label }}</span><span style="font-size:44px; font-weight:600; line-height:1; color:{{ p.color }}">{{ p.value }}</span><span style="font-size:13px; color:var(--color-neutral-800)">{{ p.sub }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:56px; align-items:start">
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-lock-key" style="font-size:24px"></i><span>Protected on update</span></h3>
+                <span style="font-size:14px; color:var(--color-neutral-800)">Fleet, priority and imported fields update. Local work is kept unless you explicitly allow an override.</span>
+                <sc-for list="{{ protectRows }}" as="p" hint-placeholder-count="6">
+                  <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:4px 0">
+                    <div style="display:flex; flex-direction:column"><span style="font-size:15px; font-weight:600">{{ p.label }}</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ p.sub }}</span></div>
+                    <sc-if value="{{ p.canOverride }}"><label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; color:{{ p.color }}"><input type="checkbox" checked="{{ p.on }}" onChange="{{ p.toggle }}" style="width:16px; height:16px; accent-color:var(--color-accent-2)">Override from file</label></sc-if>
+                    <sc-if value="{{ p.locked }}"><span style="font-size:13px; color:var(--color-neutral-700); display:flex; align-items:center; gap:6px"><i class="ph-duotone ph-lock-simple"></i>Never replaced</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <h3 style="margin:0; color:var(--color-accent-2-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-warning" style="font-size:24px"></i><span>Rows that need attention</span></h3>
+                <span style="font-size:14px; color:var(--color-neutral-800)">These rows will be skipped. Fix them in the file and re-import; matching companies update in place.</span>
+                <table class="table" style="font-size:14px">
+                  <thead><tr><th>Row</th><th>Issue</th><th>Detail</th></tr></thead>
+                  <tbody>
+                    <sc-for list="{{ errorRows }}" as="e" hint-placeholder-count="7">
+                      <tr><td style="padding:10px; white-space:nowrap"><div style="display:flex; flex-direction:column"><span style="font-weight:600">{{ e.row }}</span><span style="font-size:12px; font-family:monospace; color:var(--color-neutral-700)">{{ e.id }}</span></div></td><td style="font-weight:600">{{ e.issue }}</td><td style="color:var(--color-neutral-800)">{{ e.detail }}</td></tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <label style="display:flex; align-items:center; gap:10px; font-size:15px; cursor:pointer"><input type="checkbox" checked="{{ imp.ack }}" onChange="{{ toggleAck }}" style="width:18px; height:18px; accent-color:var(--color-accent)">Skip the {{ errCount }} rows with errors and import the rest</label>
+              <sc-if value="{{ hasOverrides }}"><span style="font-size:14px; color:var(--color-accent-2-700)">{{ overrideMsg }}</span></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ impDone }}">
+          <div style="display:flex; flex-direction:column; gap:32px; max-width:900px">
+            <div style="display:flex; align-items:center; gap:14px"><i class="ph-duotone {{ doneIcon }}" style="font-size:44px; color:{{ doneColor }}"></i><h2 style="margin:0">{{ doneTitle }}</h2></div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:32px">
+              <sc-for list="{{ doneCounts }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">{{ p.label }}</span><span style="font-size:40px; font-weight:600; line-height:1">{{ p.value }}</span></div>
+              </sc-for>
+            </div>
+            <span style="font-size:14px; color:var(--color-neutral-800)">{{ doneAudit }}</span>
+            <div style="display:flex; gap:10px">
+              <div onClick="{{ backFromImport }}" class="btn btn-primary" style="min-height:46px">Back to account</div>
+              <sc-if value="{{ doneCanRollback }}"><div onClick="{{ rollbackLast }}" class="btn btn-secondary" style="min-height:46px; color:var(--color-accent-2-700)"><i class="ph-duotone ph-arrow-u-up-left"></i><span>Roll back this import</span></div></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showImpFooter }}">
+          <div style="display:flex; gap:10px">
+            <sc-if value="{{ impCanBack }}"><div onClick="{{ impBack }}" class="btn btn-secondary" style="min-height:46px">Back</div></sc-if>
+            <button onClick="{{ impNext }}" disabled="{{ impNextDisabled }}" class="btn btn-primary" style="min-height:46px; min-width:160px">{{ impNextLabel }}</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ hasToast }}">
+    <div style="position:fixed; left:50%; bottom:32px; transform:translateX(-50%); z-index:50; max-width:560px; padding:14px 18px; border-radius:var(--radius-lg); background:var(--color-neutral-900); color:#fff; font-size:15px; line-height:1.4; box-shadow:var(--shadow-lg); display:flex; gap:10px; align-items:flex-start"><i class="ph-duotone ph-check-circle" style="font-size:20px; color:var(--color-accent-300)"></i><span>{{ toast }}</span></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  SW1 = ['#c8102e', '#0088b0', '#1d6b3c', '#2a3f9d', '#d35400', '#2d2b2b'];
+  SW2 = ['#d6006c', '#edbb00', '#7d3c98', '#e67e22', '#0088b0', '#605d5d'];
+  RESERVED = ['www', 'app', 'admin', 'api', 'mail', 'l2', 'upfitopps'];
+  COLS = [['external_id', 'HV-10233'], ['company_name', 'Huron Valley Plumbing & Mechanical'], ['address', '2150 S Industrial Hwy'], ['city', 'Ann Arbor'], ['state', 'MI'], ['zip', '48104'], ['phone', '(734) 555-0142'], ['website', 'huronvalleypm.com'], ['vio_industry', 'Construction'], ['vio_subcategory', 'Plumbing & HVAC contractor'], ['total_vehicles', '38'], ['truck_count', '16'], ['van_count', '22'], ['model_mix', 'Transit 250 ×14; ProMaster ×8; F-250 ×16'], ['priority_score', '4.8'], ['priority_note', '22 service vans, 9 at MY2019 or older'], ['owner_email', 'jake.morrison@truckcolors.com'], ['program_code', 'AS-VIO-F26'], ['candidate_1_name', 'Rick Halvorsen'], ['candidate_1_title', 'Owner / President'], ['candidate_1_source', 'linkedin.com/in/… · 2026-10-14'], ['touch_interval_days', ''], ['internal_notes', 'Reviewed by MK']];
+  FIELDS = [['external_id', 'External company ID', 1], ['company_name', 'Company name', 1], ['address', 'Street address'], ['city', 'City'], ['state', 'State'], ['zip', 'ZIP code', 1], ['phone', 'Phone', 1], ['website', 'Website'], ['vio_industry', 'Industry (VIO primary)'], ['vio_subcategory', 'Industry subcategory'], ['total_vehicles', 'Total vehicles'], ['truck_count', 'Truck count'], ['van_count', 'Van count'], ['model_mix', 'Model / type mix'], ['priority_score', 'Priority score (0–5)', 1], ['priority_note', 'Priority explanation'], ['owner_email', 'Owner (rep email)'], ['program_code', 'Program / source code', 1], ['candidate_1_name', 'Candidate 1 name'], ['candidate_1_title', 'Candidate 1 title'], ['candidate_1_source', 'Candidate 1 source'], ['touch_interval_days', 'Touch-base interval (days)']];
+  ERRORS = [[14, 'HV-10234', 'Missing required field', 'phone is empty'], [37, 'HV-10261', 'Invalid priority score', '7.2 is outside 0–5'], [52, 'HV-10288', 'Unknown owner email', 'jmorison@truckcolors.com is not a rep here'], [88, 'HV-10322', 'Bad ZIP format', '“4810” needs five digits'], [103, 'HV-10337', 'Duplicate external ID', 'Also used on row 97'], [156, 'HV-10390', 'Ambiguous match', 'Matches 2 existing companies by name and address; resolve before import'], [201, 'HV-10445', 'Conflicting program', 'KN-24 is not a program for this distributor']];
+
+  seed() {
+    const R = (names, dom, t = 10) => names.map((n, i) => ({ name: n, email: n.toLowerCase().replace(' ', '.') + '@' + dom, target: [10, 15, 10, 20, 10][i % 5] }));
+    const D = (id, name, slug, status, color, mgr, reps, reg, rep, companies, last, extra = {}) => ({ id, name, slug, status, color, color2: '#d6006c', logo: '', mgrName: mgr, mgrEmail: mgr.toLowerCase().replace(' ', '.') + '@' + slug + '.com', mgrUser: mgr.split(' ')[0].toLowerCase() + '.' + mgr.split(' ')[1].toLowerCase(), reps, progs: { as: { on: true, cohort: 'Fall 2026 cohort', rep } }, reg, companies, last, imports: [], created: 'Oct 2026', ...extra });
+    const tc = D('tc', 'Truck Colors', 'truckcolors', 'Active', '#c8102e', 'Lisa Chen', R(['Jake Morrison', 'Dana Ruiz', 'Marcus Bell', 'Priya Shah', 'Tom Reilly'], 'truckcolors.com'), 'gl', 'Mike Turner', 438, 'Nov 6', {
+      imports: [{ id: 1027, when: 'Nov 6, 2026', file: 'truckcolors_existing_customers.csv', by: 'Ryan Patel', created: 26, updated: 3, skipped: 0, status: 'Committed' }, { id: 1012, when: 'Oct 28, 2026', file: 'truckcolors_vio_fall2026.csv', by: 'Ryan Patel', created: 412, updated: 0, skipped: 4, status: 'Committed' }] });
+    const list = [tc,
+      D('ls', 'Lakeshore Fleet Upfitters', 'lakeshore', 'Active', '#1d6b3c', 'Gary Holm', R(['Beth Arnold', 'Chris Yoon', 'Sam Ortiz'], 'lakeshore.com'), 'gl', 'Mike Turner', 301, 'Nov 2'),
+      D('bt', 'Buckeye Truck Equipment', 'buckeye', 'Active', '#c8102e', 'Ann Maddox', R(['Joe Paulsen', 'Kira Lane', 'Drew Fox', 'Nina Patel'], 'buckeye.com'), 'gl', 'Mike Turner', 371, 'Oct 30'),
+      D('hc', 'Hoosier Commercial Vans', 'hoosiervans', 'Active', '#2a3f9d', 'Rob Keller', R(['Ella Burns', 'Matt Webb'], 'hoosiervans.com'), 'gl', 'Mike Turner', 240, 'Oct 22'),
+      D('ef', 'Empire Fleet Solutions', 'empirefleet', 'Active', '#2d2b2b', 'Paula Grant', R(['Ian Shaw', 'Lucy Park', 'Omar Haddad'], 'empirefleet.com'), 'ne', 'Karen Doyle', 402, 'Nov 4'),
+      D('ku', 'Keystone Upfit Co.', 'keystoneupfit', 'Active', '#d35400', 'Dale Ruhl', R(['Ava Stone', 'Ben Cruz'], 'keystoneupfit.com'), 'ne', 'Karen Doyle', 318, 'Oct 27'),
+      D('gs', 'Granite State Truck Body', 'granitestate', 'Paused', '#605d5d', 'Joan Pike', R(['Will Moss'], 'granitestate.com'), 'ne', 'Karen Doyle', 180, 'Oct 15'),
+      D('pw', 'Peach State Work Trucks', 'peachstate', 'Active', '#c8102e', 'Terry Vance', R(['Mia Reed', 'Jon Hale', 'Zoe Kent', 'Raj Iyer'], 'peachstate.com'), 'se', 'Luis Ortega', 456, 'Nov 5'),
+      D('cf', 'Carolina Fleet Outfitters', 'carolinafleet', 'Active', '#2a3f9d', 'Hank Moore', R(['Sara Lyle', 'Tim Ng'], 'carolinafleet.com'), 'se', 'Luis Ortega', 335, 'Oct 29'),
+      D('su', 'Sunshine Upfit Group', 'sunshineupfit', 'Onboarding', '#d35400', 'Carla Diaz', R(['Leo Banks', 'Ivy Chen'], 'sunshineupfit.com'), 'se', 'Luis Ortega', 0, '—'),
+    ];
+    return list;
+  }
+  mfrs0() {
+    return [{ id: 'as', name: 'Adrian Steel', users: [{ name: 'Sarah Kim', email: 'skim@adriansteel.com', role: 'Leadership' }, { name: 'Mike Turner', email: 'mturner@adriansteel.com', role: 'Regional' }, { name: 'Karen Doyle', email: 'kdoyle@adriansteel.com', role: 'Regional' }, { name: 'Luis Ortega', email: 'lortega@adriansteel.com', role: 'Regional' }], nu: { name: '', email: '', role: 'Regional' } }];
+  }
+  blankDraft() { return { name: '', slug: '', slugTouched: false, color: '#1d6b3c', color2: '#edbb00', logo: '', mgrName: '', mgrEmail: '', mgrUser: '', reps: [{ name: '', email: '', target: 10 }], progs: { as: { on: true, cohort: 'Fall 2026 cohort', rep: '' } }, status: 'Onboarding' }; }
+  initState() { return { screen: 'list', q: '', dists: this.seed(), mfrs: this.mfrs0(), newMfr: '', step: 1, created: null, dr: this.blankDraft(), cur: null, tab: 'overview', imp: null, nextImport: 1043, toast: '' }; }
+  state = this.initState();
+
+  componentDidMount() { this.applyBrand(); }
+  componentDidUpdate() {
+    this.applyBrand();
+    if (this.state.toast && this._lt !== this.state.toast) { clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 3400); }
+    this._lt = this.state.toast;
+  }
+  applyBrand() { const el = this.rootRef.current; if (!el || el._b) return; el._b = 1; const c = '#c8102e';
+    const mix = (p, w) => `color-mix(in oklch, ${c} ${p}%, ${w})`, set = (k, v) => el.style.setProperty(k, v);
+    set('--color-bg', '#fff'); set('--color-accent', c);
+    set('--color-accent-100', mix(9, '#fff')); set('--color-accent-200', mix(18, '#fff')); set('--color-accent-300', mix(34, '#fff')); set('--color-accent-400', mix(62, '#fff')); set('--color-accent-500', c);
+    set('--color-accent-600', mix(86, '#000')); set('--color-accent-700', mix(72, '#000')); set('--color-accent-800', mix(56, '#000')); set('--color-accent-900', mix(40, '#000')); }
+  go(screen, extra = {}) { this.setState({ screen, ...extra }); try { window.scrollTo(0, 0); } catch (e) {} }
+  slugify(s) { return s.toLowerCase().replace(/&/g, '').replace(/[^a-z0-9]+/g, '').slice(0, 30); }
+  slugState(slug, selfId) {
+    if (!slug) return ['empty', 'Lowercase letters, numbers and hyphens.'];
+    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug) || slug.length < 3) return ['bad', 'Use 3–30 lowercase letters, numbers or hyphens; no leading or trailing hyphen.'];
+    if (this.RESERVED.includes(slug)) return ['bad', `“${slug}” is reserved.`];
+    if (this.state.dists.some(d => d.slug === slug && d.id !== selfId)) return ['bad', `${slug}.upfitopps.com is already taken.`];
+    return ['ok', `${slug}.upfitopps.com is available.`];
+  }
+  lum(hex) { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  setDr(p) { this.setState(s => ({ dr: { ...s.dr, ...p } })); }
+  draftFrom(d) { return JSON.parse(JSON.stringify({ name: d.name, slug: d.slug, slugTouched: true, color: d.color, color2: d.color2, logo: d.logo, mgrName: d.mgrName, mgrEmail: d.mgrEmail, mgrUser: d.mgrUser, reps: d.reps, progs: d.progs, status: d.status })); }
+  openAccount(id, tab = 'overview') { const d = this.state.dists.find(x => x.id === id); this.go('account', { cur: id, tab, dr: this.draftFrom(d) }); }
+  patchDist(id, fn) { this.setState(s => ({ dists: s.dists.map(d => d.id === id ? fn({ ...d }) : d) })); }
+  startImport(id) {
+    const d = this.state.dists.find(x => x.id === id);
+    const map = {}; this.COLS.forEach(([c]) => { map[c] = this.FIELDS.some(f => f[0] === c) ? c : ''; });
+    this.go('import', { cur: id, imp: { distId: id, distName: d.name, step: 1, file: '', map, ov: {}, ack: false, result: null } });
+  }
+  setImp(p) { this.setState(s => ({ imp: { ...s.imp, ...p } })); }
+  importNumbers(d) {
+    const fresh = d.companies === 0;
+    return fresh ? { rows: 417, created: 410, updated: 0, unchanged: 0, err: 7 } : { rows: 417, created: 142, updated: 251, unchanged: 17, err: 7 };
+  }
+  commit() {
+    const s = this.state, d = s.dists.find(x => x.id === s.imp.distId), n = this.importNumbers(d), id = s.nextImport;
+    const rec = { id, when: 'Nov 19, 2026', file: s.imp.file, by: 'Ryan Patel', created: n.created, updated: n.updated, skipped: n.err, status: 'Committed' };
+    this.patchDist(d.id, x => ({ ...x, companies: x.companies + n.created, last: 'Today', status: x.status === 'Onboarding' ? 'Active' : x.status, imports: [rec, ...x.imports] }));
+    this.setState({ nextImport: id + 1, imp: { ...s.imp, step: 4, result: { ...n, id, rolledBack: false } }, toast: `Import #${id} committed` });
+  }
+  rollback(distId, impId) {
+    this.patchDist(distId, x => { const im = x.imports.find(i => i.id === impId); return { ...x, companies: Math.max(0, x.companies - im.created), imports: x.imports.map(i => i.id === impId ? { ...i, status: 'Rolled back' } : i) }; });
+    this.setState(s => ({ toast: `Import #${impId} rolled back · created companies removed, updated fields restored`, imp: s.imp && s.imp.result && s.imp.result.id === impId ? { ...s.imp, result: { ...s.imp.result, rolledBack: true } } : s.imp }));
+  }
+
+  renderVals() {
+    const s = this.state, dr = s.dr;
+    const stClass = st => ({ Active: 'tag-accent', Onboarding: 'tag-outline', Paused: 'tag-neutral' })[st];
+    const distRows = s.dists.filter(d => !s.q || (d.name + d.slug).toLowerCase().includes(s.q.toLowerCase())).map(d => ({
+      name: d.name, host: d.slug + '.upfitopps.com', initial: d.name[0], color: d.color, status: d.status, stClass: stClass(d.status), manager: d.mgrName, reps: d.reps.length,
+      programs: Object.keys(d.progs).filter(k => d.progs[k].on).map(k => (s.mfrs.find(m => m.id === k) || {}).name).join(', ') || '—', companies: d.companies.toLocaleString(), last: d.last, open: () => this.openAccount(d.id) }));
+    const mfrs = s.mfrs.map(m => {
+      const progs = s.dists.filter(d => d.progs[m.id] && d.progs[m.id].on).map(d => ({ dist: d.name, cohort: d.progs[m.id].cohort, rep: d.progs[m.id].rep, setRep: e => { const v = e.target.value; this.patchDist(d.id, x => ({ ...x, progs: { ...x.progs, [m.id]: { ...x.progs[m.id], rep: v } } })); this.setState({ toast: `${d.name} assigned to ${v || 'no regional rep'} · manufacturer access updated` }); } }));
+      const setNu = p => this.setState(x => ({ mfrs: x.mfrs.map(y => y.id === m.id ? { ...y, nu: { ...y.nu, ...p } } : y) }));
+      return { name: m.name, users: m.users.map(u => ({ ...u, roleLabel: u.role === 'Leadership' ? 'Leadership' : 'Regional rep', cls: u.role === 'Leadership' ? 'tag-accent' : 'tag-neutral' })), noUsers: m.users.length === 0,
+        progs, hasProgs: progs.length > 0, noProgs: progs.length === 0, regionalNames: m.users.filter(u => u.role === 'Regional').map(u => u.name),
+        nu: m.nu, onName: e => setNu({ name: e.target.value }), onEmail: e => setNu({ email: e.target.value }), onRole: e => setNu({ role: e.target.value }),
+        nuInvalid: !(m.nu.name.trim() && /^\S+@\S+\.\S+$/.test(m.nu.email)),
+        addUser: () => this.setState(x => ({ mfrs: x.mfrs.map(y => y.id === m.id ? { ...y, users: [...y.users, { name: m.nu.name.trim(), email: m.nu.email.trim(), role: m.nu.role }], nu: { name: '', email: '', role: 'Regional' } } : y), toast: `${m.nu.name.trim()} invited to the ${m.name} portal` })) };
+    });
+
+    // wizard
+    const wiz = s.screen === 'wizard', acct = s.screen === 'account';
+    const created = wiz && s.created;
+    const [slugSt, slugMsg] = this.slugState(dr.slug, acct ? s.cur : null);
+    const step = s.step;
+    const repsValid = dr.reps.filter(r => r.name.trim() || r.email.trim()).every(r => r.name.trim() && /^\S+@\S+\.\S+$/.test(r.email));
+    const mgrValid = dr.mgrName.trim() && /^\S+@\S+\.\S+$/.test(dr.mgrEmail) && dr.mgrUser.trim();
+    const stepValid = { 1: dr.name.trim() && slugSt === 'ok', 2: !!this.lum(dr.color) && !!this.lum(dr.color2), 3: mgrValid && repsValid, 4: true, 5: true }[step];
+    const WS = ['Account', 'Branding', 'Users', 'Program', 'Review'];
+    const L = this.lum(dr.color); const cr = L != null ? (1.05) / (L + 0.05) : 0;
+    const contrastMsg = L == null ? 'Enter a six-digit hex color, e.g. #1d6b3c.' : cr >= 4.5 ? `White text on this color passes contrast (${cr.toFixed(1)}:1).` : `White text on this color is hard to read (${cr.toFixed(1)}:1). Pick a darker shade for buttons.`;
+    const swatch = (list, cur, key) => list.map(hex => ({ hex, ring: hex.toLowerCase() === (cur || '').toLowerCase() ? '0 0 0 3px #fff, 0 0 0 5px var(--color-text)' : 'none', pick: () => this.setDr({ [key]: hex }) }));
+    const setRep = (i, p) => this.setDr({ reps: dr.reps.map((r, j) => j === i ? { ...r, ...p } : r) });
+    const validReps = dr.reps.filter(r => r.name.trim());
+    const progEdit = s.mfrs.map(m => { const p = dr.progs[m.id] || { on: false, cohort: 'Fall 2026 cohort', rep: '' }; const setP = q => this.setDr({ progs: { ...dr.progs, [m.id]: { ...p, ...q } } }); return { name: m.name, on: !!p.on, cohort: p.cohort, rep: p.rep, reps: m.users.filter(u => u.role === 'Regional').map(u => u.name), toggle: () => setP({ on: !p.on }), onCohort: e => setP({ cohort: e.target.value }), onRep: e => setP({ rep: e.target.value }) }; });
+
+    // account
+    const cd = (acct || s.screen === 'import') ? s.dists.find(d => d.id === s.cur) : null;
+    let acc = { audit: [], imports: [] };
+    if (cd) {
+      acc = { name: cd.name, host: cd.slug + '.upfitopps.com', url: 'https://' + cd.slug + '.upfitopps.com', status: cd.status, stClass: stClass(cd.status), color: cd.color, initial: cd.name[0], logo: cd.logo, logoCss: cd.logo ? 'url("' + cd.logo + '")' : 'none', hasLogo: !!cd.logo, noLogo: !cd.logo,
+        imports: cd.imports.map(i => ({ ...i, created: i.created.toLocaleString(), stClass: i.status === 'Committed' ? 'tag-accent' : 'tag-neutral', canRollback: i.status === 'Committed', rollback: () => this.rollback(cd.id, i.id) })),
+        hasImports: cd.imports.length > 0, noImports: cd.imports.length === 0,
+        audit: [...cd.imports.slice(0, 2).map(i => ({ what: `CSV import #${i.id} ${i.status.toLowerCase()} (${i.created} created, ${i.updated} updated)`, when: i.when, by: i.by })), { what: 'Branding updated', when: 'Oct 27, 2026', by: 'Ryan Patel' }, { what: `Account created at ${cd.slug}.upfitopps.com`, when: 'Oct 27, 2026', by: 'Ryan Patel' }] };
+    }
+    const accDirty = acct && cd && JSON.stringify(this.draftFrom(cd)) !== JSON.stringify(dr);
+    const tab = s.tab;
+    const TABS = [['overview', 'Overview'], ['branding', 'Branding'], ['users', 'Users'], ['programs', 'Programs'], ['imports', 'Imports']];
+    const accStats = cd ? [
+      { label: 'Companies', value: cd.companies.toLocaleString(), sub: 'In the repository' },
+      { label: 'Sales reps', value: cd.reps.length, sub: `Manager: ${cd.mgrName}` },
+      { label: 'Programs', value: Object.values(cd.progs).filter(p => p.on).length, sub: Object.values(cd.progs).filter(p => p.on).map(p => p.rep || 'No regional rep').join(', ') },
+      { label: 'Last import', value: cd.last, sub: cd.imports[0] ? `#${cd.imports[0].id}` : 'No imports yet' },
+    ] : [];
+
+    // import
+    const imp = s.imp;
+    let impVals = {};
+    if (s.screen === 'import' && imp && cd) {
+      const n = this.importNumbers(cd);
+      const mappedTo = Object.values(imp.map).filter(Boolean);
+      const missing = this.FIELDS.filter(f => f[2] && !mappedTo.includes(f[0])).map(f => f[1]);
+      const dup = mappedTo.filter((v, i) => mappedTo.indexOf(v) !== i);
+      const IS = ['Upload', 'Map columns', 'Preview', 'Done'];
+      const fresh = cd.companies === 0 || n.updated === 0;
+      const PROT = [['owner', 'Owner', fresh ? 'No existing companies to protect' : '38 matching companies were reassigned locally', true], ['pdm', 'Confirmed decision-maker', fresh ? '—' : '61 matching companies have a confirmed primary', true], ['fu', 'Follow-up dates', fresh ? '—' : '24 matching companies have a scheduled follow-up', true], ['acts', 'Activity history', 'Every recorded outcome and note', false], ['oppq', 'Opportunities and quotes', fresh ? '—' : '12 matching companies', false], ['sup', 'Suppression and Do Not Contact', fresh ? '—' : '9 matching companies, including 3 Do Not Contact', false]];
+      const ovs = Object.keys(imp.ov).filter(k => imp.ov[k]);
+      const r = imp.result;
+      impVals = {
+        impSteps: IS.map((label, i) => { const k = i + 1, on = k === imp.step, done = k < imp.step; return { n: done ? '✓' : k, label, bg: on ? 'var(--color-accent-100)' : 'transparent', dotBg: on || done ? 'var(--color-accent)' : 'var(--color-neutral-200)', dotFg: on || done ? '#fff' : 'var(--color-text)', weight: on ? 600 : 400 }; }),
+        impUpload: imp.step === 1, impMap: imp.step === 2, impPreview: imp.step === 3, impDone: imp.step === 4,
+        onFile: e => { const f = e.target.files && e.target.files[0]; if (f) this.setImp({ file: f.name }); },
+        useSample: () => this.setImp({ file: `${cd.slug}_vio_update_2026-11-19.csv` }),
+        mapSummary: `${mappedTo.length} of ${this.COLS.length} columns mapped · ${this.COLS.length - mappedTo.length} not imported`,
+        mapRows: this.COLS.map(([col, sample]) => ({ col, sample: sample || '(blank)', to: imp.map[col], req: !!(this.FIELDS.find(f => f[0] === imp.map[col]) || [])[2], set: e => this.setImp({ map: { ...imp.map, [col]: e.target.value } }) })),
+        fieldOpts: this.FIELDS.map(([k, l, req]) => ({ k, l: l + (req ? ' *' : '') })),
+        hasMissingReq: missing.length > 0 || dup.length > 0, missingReqMsg: missing.length ? `Map the required fields: ${missing.join(', ')}.` : `Each field can be mapped once: ${[...new Set(dup)].join(', ')}.`,
+        previewCounts: [
+          { label: 'Rows in file', value: n.rows, sub: imp.file, color: 'var(--color-text)' },
+          { label: 'New companies', value: n.created, sub: 'Unassigned unless owner_email is valid', color: 'var(--color-accent-700)' },
+          { label: 'Updates', value: n.updated, sub: n.updated ? `Matched by external_id · ${n.unchanged} unchanged` : 'No existing companies yet', color: 'var(--color-text)' },
+          { label: 'Errors', value: n.err, sub: 'Skipped, listed below', color: 'var(--color-accent-2-700)' },
+        ],
+        protectRows: PROT.map(([k, label, sub, can]) => ({ label, sub, canOverride: can && !fresh, locked: !can, on: !!imp.ov[k], color: imp.ov[k] ? 'var(--color-accent-2-700)' : 'var(--color-neutral-800)', toggle: () => this.setImp({ ov: { ...imp.ov, [k]: !imp.ov[k] } }) })),
+        errorRows: this.ERRORS.map(([row, id, issue, detail]) => ({ row: 'Row ' + row, id, issue, detail })), errCount: n.err,
+        toggleAck: () => this.setImp({ ack: !imp.ack }),
+        hasOverrides: ovs.length > 0, overrideMsg: `Overriding ${ovs.map(k => PROT.find(p => p[0] === k)[1].toLowerCase()).join(' and ')} replaces local edits with the file's values. This is recorded in the audit log under your name.`,
+        doneTitle: r ? (r.rolledBack ? `Import #${r.id} rolled back` : `Import #${r.id} committed`) : '', doneIcon: r && r.rolledBack ? 'ph-arrow-u-up-left' : 'ph-check-circle', doneColor: r && r.rolledBack ? 'var(--color-neutral-700)' : 'var(--color-accent)',
+        doneCounts: r ? [{ label: 'Created', value: r.created }, { label: 'Updated', value: r.updated }, { label: 'Unchanged', value: r.unchanged }, { label: 'Skipped', value: r.err }] : [],
+        doneAudit: r ? `Logged as import #${r.id} by Ryan Patel, Nov 19, 2026. New companies stay out of rep queues until assigned.${ovs.length ? ' Field overrides applied: ' + ovs.join(', ') + '.' : ' No protected fields were overridden.'} Rollback is available from the Imports tab.` : '',
+        doneCanRollback: !!(r && !r.rolledBack), rollbackLast: () => this.rollback(cd.id, r.id),
+        showImpFooter: imp.step < 4, impCanBack: imp.step > 1, impBack: () => this.setImp({ step: imp.step - 1 }),
+        impNextLabel: imp.step === 3 ? 'Commit import' : 'Continue',
+        impNextDisabled: imp.step === 1 ? !imp.file : imp.step === 2 ? (missing.length > 0 || dup.length > 0) : !imp.ack,
+        impNext: () => imp.step === 3 ? this.commit() : this.setImp({ step: imp.step + 1 }),
+      };
+    }
+
+    return {
+      rootRef: this.rootRef,
+      jumps: [['07 Distributors', () => this.go('list')], ['New distributor', () => this.go('wizard', { step: 1, created: null, dr: this.blankDraft() })], ['Distributor account', () => this.openAccount('tc')], ['CSV import', () => this.startImport('tc')], ['Manufacturers', () => this.go('mfr')]].map(([label, go]) => ({ label, go })),
+      reset: () => this.setState(this.initState()),
+      navItems: [['Distributors', 'list'], ['Manufacturers', 'mfr']].map(([label, sc]) => { const on = sc === 'mfr' ? s.screen === 'mfr' : s.screen !== 'mfr'; return { label, color: on ? 'var(--color-accent-700)' : 'var(--color-text)', line: on ? 'inset 0 -2px 0 var(--color-accent)' : 'none', go: () => this.go(sc) }; }),
+      isList: s.screen === 'list', isMfr: s.screen === 'mfr', isWizard: wiz, isAccount: acct, isImport: s.screen === 'import',
+      distCount: `${s.dists.length} accounts · ${s.dists.filter(d => d.status === 'Active').length} active`, q: s.q, onQ: e => this.setState({ q: e.target.value }), distRows,
+      startWizard: () => this.go('wizard', { step: 1, created: null, dr: this.blankDraft() }),
+      mfrs, newMfr: s.newMfr, onNewMfr: e => this.setState({ newMfr: e.target.value }), newMfrInvalid: !s.newMfr.trim(),
+      addMfr: () => this.setState(x => ({ mfrs: [...x.mfrs, { id: 'm' + Date.now(), name: x.newMfr.trim(), users: [], nu: { name: '', email: '', role: 'Regional' } }], newMfr: '', toast: `${x.newMfr.trim()} added · its data stays separate from other manufacturers` })),
+      goList: () => this.go('list'), notCreated: wiz && !created,
+      wizSteps: WS.map((label, i) => { const k = i + 1, on = k === step, done = k < step; return { n: done ? '✓' : k, label, bg: on ? 'var(--color-accent-100)' : 'transparent', dotBg: on || done ? 'var(--color-accent)' : 'var(--color-neutral-200)', dotFg: on || done ? '#fff' : 'var(--color-text)', weight: on ? 600 : 400, go: () => { if (k < step) this.setState({ step: k }); } }; }),
+      dr, onName: e => { const v = e.target.value; this.setDr(dr.slugTouched ? { name: v } : { name: v, slug: this.slugify(v) }); },
+      onSlug: e => this.setDr({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30), slugTouched: true }),
+      slugMsg, slugColor: slugSt === 'ok' ? 'var(--color-accent-700)' : slugSt === 'bad' ? 'var(--color-accent-2-700)' : 'var(--color-neutral-700)', slugIcon: slugSt === 'ok' ? 'ph-check-circle' : slugSt === 'bad' ? 'ph-warning-circle' : 'ph-info',
+      showStepAccount: wiz && !created && step === 1,
+      showBranding: (wiz && !created && step === 2) || (acct && tab === 'branding'),
+      showUsers: (wiz && !created && step === 3) || (acct && tab === 'users'),
+      showPrograms: (wiz && !created && step === 4) || (acct && tab === 'programs'),
+      showReview: wiz && !created && step === 5,
+      drHasLogo: !!dr.logo, drNoLogo: !dr.logo, drLogoCss: dr.logo ? 'url("' + dr.logo + '")' : 'none', logoBtn: dr.logo ? 'Replace logo' : 'Upload logo',
+      onLogo: e => { const f = e.target.files && e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => this.setDr({ logo: rd.result }); rd.readAsDataURL(f); },
+      removeLogo: () => this.setDr({ logo: '' }),
+      primarySw: swatch(this.SW1, dr.color, 'color'), secondarySw: swatch(this.SW2, dr.color2, 'color2'),
+      onColor: e => this.setDr({ color: e.target.value.trim() }), onColor2: e => this.setDr({ color2: e.target.value.trim() }),
+      contrastMsg, contrastColor: L != null && cr >= 4.5 ? 'var(--color-accent-700)' : 'var(--color-accent-2-700)',
+      previewName: dr.name || 'Distributor name', previewSegs: Array.from({ length: 10 }, (_, i) => ({ bg: i < 4 ? dr.color : 'var(--color-neutral-200)' })),
+      onMgrName: e => this.setDr({ mgrName: e.target.value }), onMgrEmail: e => this.setDr({ mgrEmail: e.target.value }), onMgrUser: e => this.setDr({ mgrUser: e.target.value }),
+      repEdit: dr.reps.map((r, i) => ({ ...r, onName: e => setRep(i, { name: e.target.value }), onEmail: e => setRep(i, { email: e.target.value }), onTarget: e => setRep(i, { target: Math.max(1, +e.target.value || 1) }), remove: () => this.setDr({ reps: dr.reps.filter((_, j) => j !== i) }) })),
+      addRepRow: () => this.setDr({ reps: [...dr.reps, { name: '', email: '', target: 10 }] }),
+      progEdit,
+      reviewRows: [
+        { k: 'Distributor', v: dr.name }, { k: 'URL', v: `${dr.slug}.upfitopps.com` }, { k: 'Colors', v: `${dr.color} primary · ${dr.color2} secondary${dr.logo ? ' · logo uploaded' : ' · no logo yet'}` },
+        { k: 'Manager', v: `${dr.mgrName} · ${dr.mgrEmail} · username ${dr.mgrUser}` }, { k: 'Sales reps', v: validReps.length ? validReps.map(r => `${r.name} (${r.target}/day)`).join(', ') : 'None yet' },
+        { k: 'Programs', v: progEdit.filter(p => p.on).map(p => `${p.name} VIO · ${p.cohort} · ${p.rep || 'no regional rep'}`).join('; ') || 'None' },
+      ],
+      showCreated: !!created, createdTitle: created ? `${created.name} is set up at ${created.slug}.upfitopps.com` : '',
+      createdChecks: created ? [`Subdomain ${created.slug}.upfitopps.com resolves to this tenant only`, 'HTTPS covered by the wildcard certificate', `Password setup email sent to ${created.mgrEmail}`, `${created.reps.length} rep${created.reps.length === 1 ? '' : 's'} added · each gets a sign-in link with their first daily email`] : [],
+      importForCreated: () => this.startImport(created.id), openCreated: () => this.openAccount(created.id),
+      showWizFooter: wiz && !created, canBack: step > 1, wizBack: () => this.setState({ step: step - 1 }), nextLabel: step === 5 ? 'Create distributor' : 'Continue', nextDisabled: !stepValid,
+      wizNext: () => {
+        if (step < 5) return this.setState({ step: step + 1 });
+        const id = 'd' + Date.now();
+        const nd = { id, name: dr.name.trim(), slug: dr.slug, status: 'Onboarding', color: dr.color, color2: dr.color2, logo: dr.logo, mgrName: dr.mgrName, mgrEmail: dr.mgrEmail, mgrUser: dr.mgrUser, reps: validReps, progs: dr.progs, companies: 0, last: '—', imports: [], created: 'Nov 2026' };
+        this.setState(x => ({ dists: [nd, ...x.dists], created: nd, toast: `${nd.name} created` }));
+      },
+      acc, accTabs: TABS.map(([k, label]) => ({ label, color: tab === k ? 'var(--color-accent-700)' : 'var(--color-text)', line: tab === k ? 'inset 0 -2px 0 var(--color-accent)' : 'none', go: () => this.setState({ tab: k }) })),
+      showAccSave: acct && ['branding', 'users', 'programs'].includes(tab), accClean: !accDirty, accDirtyLabel: accDirty ? 'Unsaved changes' : 'All changes saved',
+      saveAcc: () => { this.patchDist(s.cur, x => ({ ...x, color: dr.color, color2: dr.color2, logo: dr.logo, mgrName: dr.mgrName, mgrEmail: dr.mgrEmail, mgrUser: dr.mgrUser, reps: dr.reps.filter(r => r.name.trim()), progs: dr.progs })); this.setState({ toast: 'Saved · logged to the audit trail' }); },
+      discardAcc: () => this.setState({ dr: this.draftFrom(cd) }),
+      showAccOverview: acct && tab === 'overview', accStats,
+      statusOpts: ['Onboarding', 'Active', 'Paused'].map(st => ({ label: st, on: cd && cd.status === st, pick: () => { this.patchDist(s.cur, x => ({ ...x, status: st })); this.setState({ dr: { ...dr, status: st }, toast: `${cd.name} is now ${st.toLowerCase()}` }); } })),
+      showAccImports: acct && tab === 'imports', startImport: () => this.startImport(s.cur),
+      imp: imp ? { ...imp, hasFile: !!imp.file, rowsLabel: imp.file ? '417 rows · 23 columns' : '' } : {},
+      backFromImport: () => this.openAccount(s.cur, 'imports'),
+      ...impVals,
+      hasToast: !!s.toast, toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

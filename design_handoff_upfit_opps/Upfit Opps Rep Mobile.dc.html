@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/styles.css">
+<script src="_ds/broadsheet-8449376d-5566-4418-8b0a-27e24a89afe4/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<style>
+body{margin:0;background:#fff}
+a{color:var(--color-accent-700)}
+a:hover{color:var(--color-accent-800)}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; padding:56px 64px 96px; display:flex; flex-direction:column; gap:40px; font-family:var(--font-body); color:var(--color-text)">
+  <header style="display:flex; flex-direction:column; gap:6px; max-width:720px">
+    <div style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--color-neutral-700)">Prototype · Phase 1 · Sales Rep</div>
+    <h1 style="margin:0; font-size:42px">Sales Rep, mobile</h1>
+    <p style="margin:0; font-size:16px; color:var(--color-neutral-800); text-wrap:pretty">Daily email, Rep Queue and Company Detail as one working calling session. Branded for the distributor; everything below the phone updates live.</p>
+  </header>
+
+  <section style="display:flex; gap:64px; align-items:flex-start; flex-wrap:wrap">
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="402px,874px">
+      <div style="position:absolute; inset:0; overflow:hidden; display:flex; flex-direction:column; background:var(--color-bg); font-family:var(--font-body); color:var(--color-text)">
+
+        <!-- 01 DAILY EMAIL -->
+        <sc-if value="{{ isEmail }}" hint-placeholder-val="{{ true }}">
+          <div ref="{{ emailScroll }}" style="flex:1; overflow:auto; padding:60px 0 40px">
+            <div style="display:flex; align-items:center; gap:8px; padding:0 20px 14px; color:var(--color-accent-700); font-size:15px"><i class="ph-duotone ph-caret-left"></i>Inbox</div>
+            <div style="padding:0 20px 18px; display:flex; flex-direction:column; gap:10px">
+              <div style="font-size:21px; font-weight:600; line-height:1.2">Your {{ target }} prospects for Thursday</div>
+              <div style="display:flex; gap:10px; align-items:center">
+                <div style="width:36px; height:36px; border-radius:50%; background:var(--color-accent); color:var(--color-bg); display:grid; place-items:center; font-weight:600; font-size:14px">{{ brandInitial }}</div>
+                <div style="display:flex; flex-direction:column; font-size:13px; line-height:1.35">
+                  <span style="font-weight:600">{{ brandName }} via Upfit Opps</span>
+                  <span style="color:var(--color-neutral-700)">to Jake Morrison · 7:00 AM</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin:0 12px; background:#fff; border-radius:var(--radius-lg); padding:24px 20px 28px; display:flex; flex-direction:column; gap:22px; box-shadow:var(--shadow-sm)">
+              <div style="display:flex; align-items:baseline; gap:8px">
+                <span style="font-size:20px; font-weight:600; color:var(--color-accent)">{{ brandName }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <div style="font-size:26px; font-weight:600; line-height:1.15">Morning Prospect List</div>
+                <div style="font-size:16px; line-height:1.5; color:var(--color-neutral-800)">Jake. Today's goal is outreach to <strong>{{ target }} cold prospects</strong>. Here's where to start.</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <sc-for list="{{ emailStarters }}" as="e" hint-placeholder-count="5">
+                  <div onClick="{{ e.open }}" style="display:grid; grid-template-columns:22px 1fr auto; gap:10px; cursor:pointer; align-items:baseline">
+                    <span style="font-size:14px; color:var(--color-neutral-600)">{{ e.rank }}</span>
+                    <div style="display:flex; flex-direction:column; gap:2px">
+                      <span style="font-size:16px; font-weight:600; color:var(--color-accent-700); text-decoration:underline; text-underline-offset:3px">{{ e.name }}</span>
+                      <span style="font-size:13px; color:var(--color-neutral-700)">{{ e.meta }}</span>
+                    </div>
+                    <span style="font-size:15px; font-weight:600">{{ e.score }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div onClick="{{ openQueue }}" class="btn btn-primary" style="min-height:52px; font-size:16px">Open My Queue</div>
+              <div style="display:flex; flex-direction:column; gap:10px; padding-top:6px">
+                <div style="font-size:20px; font-weight:600; line-height:1.2">Follow Up Reminders</div>
+                <sc-for list="{{ emailDue }}" as="e" hint-placeholder-count="3">
+                  <div onClick="{{ e.open }}" style="display:flex; flex-direction:column; gap:2px; cursor:pointer">
+                    <span style="font-size:15px; font-weight:600; color:var(--color-accent-700); text-decoration:underline; text-underline-offset:3px">{{ e.name }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-700)">{{ e.kind }} · {{ e.reason }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <a href="https://upfitopps.com" target="_blank" style="font-size:14px; color:var(--color-accent-700); align-self:center; margin-top:var(--space-6)">Open UpfitOpps.com</a>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- 02 REP QUEUE -->
+        <sc-if value="{{ isQueue }}">
+          <div style="flex:none; padding:54px 16px 6px; display:flex; flex-direction:column; gap:8px; background:var(--color-bg); box-shadow:0 1px 0 var(--color-divider); position:relative; z-index:2">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:0 4px">
+              <span style="font-size:18px; font-weight:600; color:var(--color-accent)">{{ brandName }}</span>
+              <div style="width:34px; height:34px; border-radius:50%; background:var(--color-neutral-200); display:grid; place-items:center; font-size:13px; font-weight:600">JM</div>
+            </div>
+            <nav style="display:flex; justify-content:space-between; gap:4px">
+              <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+                <div onClick="{{ n.go }}" style="cursor:pointer; flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; min-height:50px; padding:5px 2px; border-radius:var(--radius-md); color:var(--color-neutral-800)" style-hover="background:var(--color-neutral-100); color:var(--color-accent-700)">
+                  <i class="ph-duotone {{ n.icon }}" style="font-size:24px; color:var(--color-accent)"></i>
+                  <span style="font-size:11px">{{ n.label }}</span>
+                </div>
+              </sc-for>
+            </nav>
+          </div>
+          <div ref="{{ queueScroll }}" style="flex:1; overflow:auto; position:relative; padding:24px 20px 56px; display:flex; flex-direction:column; gap:44px">
+
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <div style="font-size:13px; color:var(--color-neutral-700)">Thursday, November 19 · Jake Morrison</div>
+              <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
+                <div style="display:flex; align-items:baseline; gap:6px">
+                  <span style="font-size:56px; font-weight:600; line-height:.9; letter-spacing:-.02em">{{ attempts }}</span>
+                  <span style="font-size:22px; color:var(--color-neutral-700)">/ {{ target }}</span>
+                </div>
+                <div style="font-size:15px; font-weight:600; text-align:right; color:var(--color-accent-700); padding-bottom:4px">{{ remainingLabel }}</div>
+              </div>
+              <div style="display:flex; gap:4px">
+                <sc-for list="{{ progressSegs }}" as="g" hint-placeholder-count="10">
+                  <div style="flex:1; height:14px; border-radius:var(--radius-md); background:{{ g.bg }}; transition:background .3s"></div>
+                </sc-for>
+              </div>
+              <div onClick="{{ start }}" class="btn btn-primary" style="min-height:56px; font-size:18px; margin-top:6px"><i class="ph-duotone ph-play" style="font-size:20px"></i><span>Start</span></div>
+            </div>
+
+            <div ref="{{ secProspects }}" style="display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-target" style="font-size:26px"></i><span>Cold Prospects</span></h3>
+                <span style="font-size:12px; color:var(--color-neutral-700)">Ranked by priority</span>
+              </div>
+              <sc-for list="{{ queueItems }}" as="q" hint-placeholder-count="6">
+                <div onClick="{{ q.open }}" style="cursor:pointer; display:grid; grid-template-columns:26px minmax(0,1fr) auto 16px; gap:12px; align-items:center; padding:12px 8px; margin:0 -8px; border-radius:var(--radius-md); opacity:{{ q.opacity }}" style-hover="background:var(--color-neutral-100)">
+                  <sc-if value="{{ q.notDone }}"><span style="font-size:17px; color:var(--color-neutral-600)">{{ q.rank }}</span></sc-if>
+                  <sc-if value="{{ q.isDone }}"><i class="ph-duotone {{ q.doneIcon }}" style="font-size:22px; color:var(--color-accent-700)"></i></sc-if>
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0">
+                    <span style="font-size:16px; font-weight:600; line-height:1.25">{{ q.name }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-700)">{{ q.meta }}</span>
+                  </div>
+                  <span style="font-size:18px; font-weight:600">{{ q.score }}</span>
+                  <i class="ph-duotone ph-caret-right" style="font-size:16px; color:var(--color-neutral-600)"></i>
+                </div>
+              </sc-for>
+              <sc-if value="{{ showContinue }}">
+                <div style="display:flex; flex-direction:column; gap:10px; padding-top:12px">
+                  <div style="font-size:15px; color:var(--color-neutral-800)">{{ continueMsg }}</div>
+                  <div onClick="{{ continueProspecting }}" class="btn btn-primary" style="min-height:52px; font-size:16px"><i class="ph-duotone ph-arrow-right"></i><span>Continue Prospecting</span></div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div ref="{{ secFollow }}" style="display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-bell-ringing" style="font-size:26px"></i><span>Follow Up Reminders</span></h3>
+                <span style="font-size:12px; color:var(--color-neutral-700)">Not counted toward goal</span>
+              </div>
+              <sc-for list="{{ followItems }}" as="d" hint-placeholder-count="3">
+                <div onClick="{{ d.open }}" style="cursor:pointer; display:grid; grid-template-columns:minmax(0,1fr) 16px; gap:12px; align-items:center; padding:12px 8px; margin:0 -8px; border-radius:var(--radius-md)" style-hover="background:var(--color-neutral-100)">
+                  <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                    <span style="font-size:16px; font-weight:600; line-height:1.25">{{ d.name }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-700)">{{ d.meta }}</span>
+                    <div style="display:flex"><span class="tag tag-neutral"><span>{{ d.last }}</span></span></div>
+                    <span style="font-size:14px; font-style:italic; color:var(--color-neutral-800)">{{ d.note }}</span>
+                  </div>
+                  <i class="ph-duotone ph-caret-right" style="font-size:16px; color:var(--color-neutral-600)"></i>
+                </div>
+              </sc-for>
+              <sc-if value="{{ noFollow }}"><span style="font-size:14px; color:var(--color-neutral-700)">Nothing due today.</span></sc-if>
+              <sc-if value="{{ hasUpcoming }}">
+                <div style="display:flex; flex-direction:column; gap:8px; padding-top:14px">
+                  <h6 style="margin:0; color:var(--color-neutral-700)">Upcoming</h6>
+                  <sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="1">
+                    <div onClick="{{ u.open }}" style="cursor:pointer; display:grid; grid-template-columns:60px minmax(0,1fr) 16px; gap:12px; align-items:baseline; padding:12px 8px; margin:0 -8px; border-radius:var(--radius-md)" style-hover="background:var(--color-neutral-100)">
+                      <span style="font-size:14px; font-weight:600; color:var(--color-accent-700)">{{ u.date }}</span>
+                      <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:15px">{{ u.name }}</span><span style="font-size:13px; font-style:italic; color:var(--color-neutral-700)">{{ u.note }}</span></div>
+                      <i class="ph-duotone ph-caret-right" style="font-size:16px; color:var(--color-neutral-600)"></i>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+
+            <div ref="{{ secZip }}" style="display:flex; flex-direction:column; gap:10px">
+              <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-map-pin" style="font-size:26px"></i><span>Find by ZIP</span></h3>
+              <input class="input" value="{{ zip }}" onChange="{{ onZip }}" inputMode="numeric" maxLength="5" placeholder="Five-digit ZIP, e.g. 48104" style="min-height:48px; font-size:17px; letter-spacing:.06em">
+              <div style="font-size:13px; color:var(--color-neutral-700)">{{ zipMsg }}</div>
+              <sc-for list="{{ zipResults }}" as="r" hint-placeholder-count="0">
+                <div onClick="{{ r.open }}" style="cursor:pointer; display:grid; grid-template-columns:minmax(0,1fr) auto 16px; gap:12px; align-items:center; padding:10px 8px; margin:0 -8px; border-radius:var(--radius-md)" style-hover="background:var(--color-neutral-100)">
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0">
+                    <span style="font-size:15px; font-weight:600">{{ r.name }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-800)">{{ r.addr }} · {{ r.phone }}</span>
+                    <span style="font-size:12px; color:var(--color-neutral-700)">Owner: {{ r.owner }} · {{ r.last }}</span>
+                  </div>
+                  <span style="font-size:16px; font-weight:600">{{ r.score }}</span>
+                  <i class="ph-duotone ph-caret-right" style="font-size:16px; color:var(--color-neutral-600)"></i>
+                </div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ lbEnabled }}" hint-placeholder-val="{{ true }}">
+              <div ref="{{ secLb }}" style="display:flex; flex-direction:column; gap:16px">
+                <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-trophy" style="font-size:26px"></i><span>Team Leaderboard</span></h3>
+                <div class="seg" style="align-self:flex-start">
+                  <label class="seg-opt" style="padding:12px 16px; font-size:14px; min-height:44px"><input type="radio" name="lb" checked="{{ lbToday }}" onChange="{{ lbSetToday }}">Today</label>
+                  <label class="seg-opt" style="padding:12px 16px; font-size:14px; min-height:44px"><input type="radio" name="lb" checked="{{ lbWeek }}" onChange="{{ lbSetWeek }}">Week to date</label>
+                  <label class="seg-opt" style="padding:12px 16px; font-size:14px; min-height:44px"><input type="radio" name="lb" checked="{{ lbMonth }}" onChange="{{ lbSetMonth }}">Month</label>
+                </div>
+                <div style="display:flex; flex-direction:column">
+                  <div style="display:grid; grid-template-columns:18px minmax(0,1fr) 40px 40px 32px 34px 44px; gap:6px; padding:0 0 8px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700); border-bottom:1px solid var(--color-divider)">
+                    <span></span><span>Rep</span><span style="text-align:right">Calls</span><span style="text-align:right">Goal</span><span style="text-align:right">DMs</span><span style="text-align:right">Opps</span><span style="text-align:right">Opp/DM</span>
+                  </div>
+                  <sc-for list="{{ lbRows }}" as="l" hint-placeholder-count="4">
+                    <div style="display:grid; grid-template-columns:18px minmax(0,1fr) 40px 40px 32px 34px 44px; gap:6px; padding:13px 0; font-size:15px; font-weight:{{ l.weight }}; align-items:baseline; border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)">
+                      <span style="font-weight:600; color:var(--color-accent-700)">{{ l.rank }}</span><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ l.name }}</span><span style="text-align:right">{{ l.a }}</span><span style="text-align:right">{{ l.pct }}</span><span style="text-align:right">{{ l.dm }}</span><span style="text-align:right">{{ l.opp }}</span><span style="text-align:right">{{ l.conv }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:grid; grid-template-columns:64px 1fr; gap:6px 12px; font-size:13px; line-height:1.4; color:var(--color-neutral-800)">
+                  <span style="font-weight:600">Calls</span><span>Recorded cold outreach attempts</span>
+                  <span style="font-weight:600">Goal</span><span>Percent of daily target reached</span>
+                  <span style="font-weight:600">DMs</span><span>Decision-makers reached</span>
+                  <span style="font-weight:600">Opps</span><span>Opportunities identified</span>
+                  <span style="font-weight:600">Opp/DM</span><span>Opportunity conversion ratio: opportunities ÷ decision-maker conversations</span>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- 02b MY CONTACTS -->
+        <sc-if value="{{ isContacts }}">
+          <div style="flex:none; padding:54px 20px 12px; display:flex; flex-direction:column; gap:6px; background:var(--color-bg); box-shadow:0 1px 0 var(--color-divider)">
+            <div onClick="{{ backToQueue }}" class="btn btn-ghost" style="align-self:flex-start; font-size:15px; padding-left:0; min-height:44px"><i class="ph-duotone ph-caret-left"></i><span>Queue</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline">
+              <h2 style="margin:0; font-size:27px">My Contacts</h2>
+              <span style="font-size:13px; color:var(--color-neutral-700)">{{ contactCount }}</span>
+            </div>
+          </div>
+          <div ref="{{ contactsScroll }}" style="flex:1; overflow:auto; padding:16px 20px 48px; display:flex; flex-direction:column; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                <div class="field"><label>City</label>
+                  <select class="input" value="{{ f.city }}" onChange="{{ onFCity }}" style="min-height:44px; font-size:15px">
+                    <option value="">All cities</option>
+                    <sc-for list="{{ cityOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o }}">{{ o }}</option></sc-for>
+                  </select>
+                </div>
+                <div class="field"><label>ZIP</label><input class="input" value="{{ f.zip }}" onChange="{{ onFZip }}" inputMode="numeric" maxLength="5" placeholder="Any" style="min-height:44px; font-size:15px"></div>
+              </div>
+              <div class="field"><label>Industry</label>
+                <select class="input" value="{{ f.ind }}" onChange="{{ onFInd }}" style="min-height:44px; font-size:15px">
+                  <option value="">All industries</option>
+                  <sc-for list="{{ indOpts }}" as="o" hint-placeholder-count="0"><option value="{{ o }}">{{ o }}</option></sc-for>
+                </select>
+              </div>
+              <div class="field"><label>Type</label>
+                <div class="seg" style="display:flex">
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="ft" checked="{{ ftAll }}" onChange="{{ setFtAll }}">All</label>
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="ft" checked="{{ ftCold }}" onChange="{{ setFtCold }}">Cold prospect</label>
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="ft" checked="{{ ftCust }}" onChange="{{ setFtCust }}">Past customer</label>
+                </div>
+              </div>
+              <div class="field"><label>Priority</label>
+                <div class="seg" style="display:flex">
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="fp" checked="{{ fpAll }}" onChange="{{ setFpAll }}">Any</label>
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="fp" checked="{{ fpHi }}" onChange="{{ setFpHi }}">4.0+</label>
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="fp" checked="{{ fpMid }}" onChange="{{ setFpMid }}">3.0–3.9</label>
+                  <label class="seg-opt" style="flex:1; justify-content:center; padding:12px 8px; font-size:14px; min-height:44px"><input type="radio" name="fp" checked="{{ fpLo }}" onChange="{{ setFpLo }}">Under 3</label>
+                </div>
+              </div>
+              <sc-if value="{{ hasFilters }}"><div onClick="{{ clearFilters }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; min-height:44px"><i class="ph-duotone ph-x"></i><span>Clear filters</span></div></sc-if>
+            </div>
+            <div style="display:flex; flex-direction:column">
+              <div style="display:grid; grid-template-columns:minmax(0,1fr) 54px 44px; gap:10px; padding-bottom:8px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700); border-bottom:1px solid var(--color-divider)">
+                <span>Company</span><span>ZIP</span><span style="text-align:right">Priority</span>
+              </div>
+              <sc-for list="{{ contactRows }}" as="r" hint-placeholder-count="8">
+                <div onClick="{{ r.open }}" style="cursor:pointer; display:grid; grid-template-columns:minmax(0,1fr) 54px 44px; gap:10px; align-items:baseline; padding:12px 0; border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" style-hover="background:var(--color-neutral-100)">
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0">
+                    <span style="font-size:15px; font-weight:600; line-height:1.25">{{ r.name }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-700)">{{ r.meta }}</span>
+                  </div>
+                  <span style="font-size:14px">{{ r.zip }}</span>
+                  <span style="font-size:15px; font-weight:600; text-align:right">{{ r.score }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ noContacts }}"><span style="font-size:14px; color:var(--color-neutral-700); padding-top:14px">No contacts match these filters.</span></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- 03 COMPANY DETAIL -->
+        <sc-if value="{{ isDetail }}">
+          <div ref="{{ detailScroll }}" style="flex:1; overflow:auto; padding:56px 20px 36px; display:flex; flex-direction:column; gap:32px">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div onClick="{{ backToQueue }}" class="btn btn-ghost" style="font-size:15px; padding-left:0; min-height:44px"><i class="ph-duotone ph-caret-left"></i><span>{{ backLabel }}</span></div>
+              <span style="font-size:13px; color:var(--color-neutral-700)">{{ c.position }}</span>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:-16px">
+              <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start">
+                <h2 style="margin:0; font-size:27px; text-wrap:pretty">{{ c.name }}</h2>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; flex:none">
+                  <span style="font-size:30px; font-weight:600; line-height:1">{{ c.score }}</span>
+                  <span style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--color-neutral-700)">priority / 5</span>
+                </div>
+              </div>
+              <div style="font-size:14px; color:var(--color-neutral-800)">{{ c.industry }}</div>
+              <div style="font-size:14px; color:var(--color-neutral-800)">{{ c.addr }}, {{ c.city }} {{ c.zip }}</div>
+              <div style="display:flex; flex-direction:column; gap:4px; padding-top:4px">
+                <div style="display:flex; gap:20px; align-items:baseline">
+                  <div><span style="font-size:22px; font-weight:600">{{ c.total }}</span> <span style="font-size:13px; color:var(--color-neutral-700)">vehicles</span></div>
+                  <div><span style="font-size:17px; font-weight:600">{{ c.trucks }}</span> <span style="font-size:13px; color:var(--color-neutral-700)">trucks</span></div>
+                  <div><span style="font-size:17px; font-weight:600">{{ c.vans }}</span> <span style="font-size:13px; color:var(--color-neutral-700)">vans</span></div>
+                </div>
+                <div style="font-size:13px; color:var(--color-neutral-800)">{{ c.mix }}</div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; padding-top:2px">
+                <span class="tag {{ c.stateClass }}">{{ c.stateLabel }}</span>
+                <span class="tag tag-neutral"><span>Owner: {{ c.owner }}</span></span>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:-8px">
+              <a href="{{ c.tel }}" onClick="{{ onCall }}" class="btn btn-primary" style="min-height:56px; font-size:18px"><i class="ph-duotone ph-phone" style="font-size:22px"></i><span>Call {{ c.phone }}</span></a>
+              <div style="display:flex; gap:10px">
+                <a href="{{ c.mapUrl }}" target="_blank" class="btn btn-secondary" style="flex:1; min-height:44px"><i class="ph-duotone ph-map-pin"></i>Directions</a>
+                <a href="{{ c.webUrl }}" target="_blank" class="btn btn-secondary" style="flex:1; min-height:44px"><i class="ph-duotone ph-globe"></i>Website</a>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:18px">
+              <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+                <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Attempts</span><span style="font-size:22px; font-weight:600">{{ c.attempts }}</span></div>
+                <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Last</span><span style="font-size:14px; line-height:1.3">{{ c.last }}</span></div>
+                <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-neutral-700)">Next</span><span style="font-size:14px; line-height:1.3">{{ c.next }}</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px">
+                <h5 style="margin:0">Activity</h5>
+                <sc-for list="{{ c.actsShown }}" as="a" hint-placeholder-count="1">
+                  <div style="display:grid; grid-template-columns:22px 1fr; gap:10px">
+                    <i class="ph-duotone {{ a.icon }}" style="font-size:18px; color:var(--color-accent-700); padding-top:2px"></i>
+                    <div style="display:flex; flex-direction:column; gap:2px">
+                      <span style="font-size:15px; font-weight:600">{{ a.label }}</span>
+                      <span style="font-size:12px; color:var(--color-neutral-700)">{{ a.when }} · {{ a.user }}</span>
+                      <span style="font-size:14px; color:var(--color-neutral-800)">{{ a.note }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ c.noActs }}"><span style="font-size:14px; color:var(--color-neutral-700)">No recorded outreach yet.</span></sc-if>
+                <sc-if value="{{ c.hasMoreActs }}">
+                  <div onClick="{{ toggleActs }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; min-height:44px"><i class="ph-duotone {{ actsIcon }}"></i><span>{{ actsLabel }}</span></div>
+                </sc-if>
+              </div>
+            </div>
+
+            <sc-if value="{{ c.isCustomer }}">
+              <div style="display:flex; flex-direction:column; gap:10px; padding:16px; background:var(--color-accent-100); border-radius:var(--radius-md)">
+                <h5 style="margin:0; color:var(--color-accent-800)">Existing customer touch-base</h5>
+                <div style="font-size:14px; color:var(--color-accent-900)">{{ c.touchLine }}</div>
+                <div style="display:flex; gap:10px">
+                  <div onClick="{{ alreadyContacted }}" class="btn btn-primary" style="flex:1; min-height:48px">Already Contacted</div>
+                  <div onClick="{{ snooze }}" class="btn btn-secondary" style="flex:1; min-height:48px; background:var(--color-bg)">Snooze 7 days</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-phone-call" style="font-size:26px"></i><span>Log Outcome</span></h3>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                <sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="5">
+                  <div onClick="{{ o.select }}" class="btn {{ o.cls }}" style="min-height:72px; justify-content:flex-start; text-align:left; font-size:16px; line-height:1.2; padding:12px 14px; gap:10px; background-color:{{ o.bg }}"><i class="ph-duotone {{ o.icon }}" style="font-size:26px; flex:none"></i><span>{{ o.label }}</span></div>
+                </sc-for>
+              </div>
+
+              <sc-if value="{{ hasOutcome }}">
+                <div style="display:flex; flex-direction:column; gap:14px; padding-top:6px">
+                  <sc-if value="{{ isGk }}">
+                    <div class="field"><label>Who did you speak with? (optional)</label><input class="input" value="{{ draft.gk }}" onChange="{{ onGk }}" placeholder="Name or role" style="min-height:44px; font-size:15px"></div>
+                  </sc-if>
+                  <sc-if value="{{ isDm }}">
+                    <div style="display:flex; flex-direction:column; gap:10px">
+                      <div class="seg" style="align-self:flex-start">
+                        <label class="seg-opt" style="padding:12px 14px; min-height:44px"><input type="radio" name="dmi" checked="{{ dmFollow }}" onChange="{{ setDmFollow }}">Keep following up</label>
+                        <label class="seg-opt" style="padding:12px 14px; min-height:44px"><input type="radio" name="dmi" checked="{{ dmNi }}" onChange="{{ setDmNi }}">Not interested now</label>
+                      </div>
+                      <sc-if value="{{ dmAsk }}">
+                        <div style="display:flex; flex-direction:column; gap:8px">
+                          <span style="font-size:13px; color:var(--color-neutral-800)">Who did you speak with? Picking one confirms them as primary.</span>
+                          <div style="display:flex; gap:8px; flex-wrap:wrap">
+                            <sc-for list="{{ dmChoices }}" as="p" hint-placeholder-count="2">
+                              <div onClick="{{ p.pick }}" class="btn {{ p.cls }}" style="min-height:44px">{{ p.name }}</div>
+                            </sc-for>
+                            <div onClick="{{ newPdm }}" class="btn btn-secondary" style="min-height:44px">Someone else</div>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ showNote }}"><div class="field"><label>Note (optional)</label><textarea class="input" value="{{ draft.note }}" onChange="{{ onNote }}" placeholder="What happened?" style="min-height:72px; font-size:15px"></textarea></div></sc-if>
+                  <div style="display:flex; flex-direction:column; gap:8px">
+                    <span style="font-size:12px; color:var(--color-neutral-800)">Follow-up</span>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap">
+                      <sc-for list="{{ fuChips }}" as="f" hint-placeholder-count="4">
+                        <div onClick="{{ f.pick }}" class="btn {{ f.cls }}" style="min-height:44px; font-size:14px">{{ f.label }}</div>
+                      </sc-for>
+                    </div>
+                    <input class="input" type="date" value="{{ fuDate }}" onChange="{{ onFuDate }}" min="2026-11-20" style="min-height:44px; font-size:15px">
+                  </div>
+                </div>
+              </sc-if>
+
+              <div onClick="{{ toggleRm }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:56px">
+                <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Remove from outreach</span><span style="font-size:13px; color:var(--color-neutral-700)">Stop prospecting this company. History is kept.</span></div>
+                <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ rmTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ rmKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+              </div>
+              <sc-if value="{{ rmOn }}">
+                <div style="display:flex; flex-direction:column; gap:12px; padding-left:2px">
+                  <label class="radio" style="align-items:flex-start; font-size:15px"><input type="radio" name="rm" checked="{{ rmRemove }}" onChange="{{ setRmRemove }}"><span class="dot" style="margin-top:3px"></span><span><strong>Remove from outreach.</strong> A manager can restore it.</span></label>
+                  <label class="radio" style="align-items:flex-start; font-size:15px"><input type="radio" name="rm" checked="{{ rmDnc }}" onChange="{{ setRmDnc }}"><span class="dot" style="margin-top:3px"></span><span><strong>Do not contact.</strong> Permanent. Future CSV imports can't reactivate it.</span></label>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <h3 style="margin:0; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-user-circle-check" style="font-size:26px"></i><span>Decision-Maker</span></h3>
+              <sc-if value="{{ c.hasPdm }}">
+                <div style="display:flex; flex-direction:column; gap:10px">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+                    <span class="tag {{ c.pdmTagClass }}">{{ c.pdmTag }}</span>
+                    <span style="font-size:12px; color:var(--color-neutral-700)">{{ c.pdmBy }}</span>
+                  </div>
+                  <div class="field"><label>Name</label><input class="input" value="{{ c.pdmName }}" onChange="{{ pName }}" placeholder="Full name" style="min-height:44px; font-size:16px; font-weight:600"></div>
+                  <div class="field"><label>Title</label><input class="input" value="{{ c.pdmTitle }}" onChange="{{ pTitle }}" placeholder="e.g. Fleet Manager" style="min-height:44px; font-size:15px"></div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                    <div class="field"><label>Phone</label><input class="input" value="{{ c.pdmPhone }}" onChange="{{ pPhone }}" inputMode="tel" placeholder="Direct line" style="min-height:44px; font-size:15px"></div>
+                    <div class="field"><label>Email</label><input class="input" value="{{ c.pdmEmail }}" onChange="{{ pEmail }}" inputMode="email" placeholder="Email" style="min-height:44px; font-size:15px"></div>
+                  </div>
+                  <div class="field"><label>Notes</label><input class="input" value="{{ c.pdmNotes }}" onChange="{{ pNotes }}" placeholder="Best time to reach, etc." style="min-height:44px; font-size:15px"></div>
+                  <div style="display:flex; gap:10px; align-items:center">
+                    <sc-if value="{{ c.pdmPending }}"><button onClick="{{ confirmManual }}" disabled="{{ c.pdmNoName }}" class="btn btn-primary" style="min-height:44px">Confirm as primary</button></sc-if>
+                    <div onClick="{{ removePdm }}" class="btn btn-ghost" style="color:var(--color-accent-2-700)"><i class="ph-duotone ph-user-minus"></i><span>{{ c.pdmRemoveLabel }}</span></div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ c.hasCands }}">
+                <div style="display:flex; flex-direction:column; gap:4px; padding-top:4px">
+                  <span style="font-size:12px; color:var(--color-neutral-700)">{{ c.candsIntro }}</span>
+                  <sc-for list="{{ c.cands }}" as="k" hint-placeholder-count="2">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0">
+                      <div style="display:flex; flex-direction:column; min-width:0">
+                        <span style="font-size:15px; font-weight:600">{{ k.name }}</span>
+                        <span style="font-size:13px; color:var(--color-neutral-800)">{{ k.title }}</span>
+                      </div>
+                      <div onClick="{{ k.confirm }}" class="btn btn-secondary" style="flex:none; min-height:44px">{{ k.action }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ c.noPdm }}">
+                <div onClick="{{ newPdm }}" class="btn btn-ghost" style="align-self:flex-start; padding-left:0; min-height:44px"><i class="ph-duotone ph-plus"></i><span>Enter someone else</span></div>
+              </sc-if>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <h3 style="margin:0 0 4px; color:var(--color-accent-700); display:flex; align-items:center; gap:8px"><i class="ph-duotone ph-flag-banner" style="font-size:26px"></i><span>Opportunity</span></h3>
+
+              <div onClick="{{ toggleOpp }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:56px">
+                <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Opportunity identified</span><span style="font-size:13px; color:var(--color-neutral-700)">Interest and initial fact finding completed.</span></div>
+                <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ oppTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ oppKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+              </div>
+              <sc-if value="{{ draft.opp }}">
+                <input class="input" value="{{ draft.oppDesc }}" onChange="{{ onOppDesc }}" placeholder="What's the opportunity? (optional)" style="min-height:44px; font-size:15px; margin-bottom:6px">
+              </sc-if>
+
+              <div onClick="{{ toggleQuote }}" style="cursor:pointer; display:flex; align-items:center; gap:14px; min-height:56px">
+                <div style="flex:1; display:flex; flex-direction:column; gap:2px"><span style="font-size:16px; font-weight:600">Quote sent</span><span style="font-size:13px; color:var(--color-neutral-700)">{{ quoteDesc }}</span></div>
+                <div style="flex:none; width:50px; height:30px; border-radius:15px; background:{{ quoteTrack }}; position:relative; transition:background .2s"><div style="position:absolute; top:3px; left:{{ quoteKnob }}; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:left .2s"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:none; display:flex; align-items:center; gap:10px; padding:8px 16px 30px; background:var(--color-accent)">
+            <button onClick="{{ onLeft }}" disabled="{{ saving }}" class="btn" style="min-height:48px; padding:0 14px; color:var(--color-bg); font-size:15px; font-weight:400; opacity:.85" style-hover="opacity:1">{{ leftLabel }}</button>
+            <span style="flex:1; text-align:center; font-size:12px; color:var(--color-bg); opacity:.85">{{ barHint }}</span>
+            <button onClick="{{ onRight }}" disabled="{{ rightDisabled }}" class="btn" style="min-height:48px; padding:0 22px; background:var(--color-bg); color:var(--color-accent-800); font-size:16px"><span>{{ rightLabel }}</span><i class="ph-duotone ph-arrow-right"></i></button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasToast }}">
+          <div style="position:absolute; left:16px; right:16px; bottom:{{ toastBottom }}; z-index:40; padding:14px 16px; border-radius:var(--radius-lg); background:var(--color-neutral-900); color:var(--color-bg); font-size:14px; line-height:1.4; box-shadow:var(--shadow-lg); display:flex; gap:10px; align-items:flex-start"><i class="ph-duotone ph-check-circle" style="font-size:18px; color:var(--color-accent-300)"></i><span>{{ toast }}</span></div>
+        </sc-if>
+
+        <sc-if value="{{ offline }}">
+          <div style="position:absolute; left:0; right:0; top:47px; z-index:30; padding:6px 16px; background:var(--color-neutral-900); color:var(--color-bg); font-size:12px; display:flex; gap:8px; align-items:center"><i class="ph-duotone ph-cloud-slash" style="font-size:16px"></i><span>Offline · outcomes save on this phone and sync when you reconnect</span></div>
+        </sc-if>
+        </div>
+    </x-import>
+
+    <aside style="flex:1; min-width:300px; max-width:460px; display:flex; flex-direction:column; gap:36px; padding-top:12px">
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <h6 style="margin:0">Jump to</h6>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <div onClick="{{ jumpEmail }}" class="btn btn-secondary">01 Daily email</div>
+          <div onClick="{{ jumpQueue }}" class="btn btn-secondary">02 Rep queue</div>
+          <div onClick="{{ jumpDetail }}" class="btn btn-secondary">03 Company detail</div>
+          <div onClick="{{ reset }}" class="btn btn-ghost"><i class="ph-duotone ph-arrow-counter-clockwise"></i>Reset demo</div>
+        </div>
+        <a href="Upfit Opps Manager.dc.html" style="font-size:15px">Manager →</a>
+        <a href="Upfit Opps Manufacturer.dc.html" style="font-size:15px">Manufacturer →</a>
+        <a href="Upfit Opps Admin.dc.html" style="font-size:15px">L2 Admin →</a>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h6 style="margin:0">Demo the calling session</h6>
+        <ol style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:15px; line-height:1.45">
+          <li>Open My Queue from the email, or tap a company to deep-link.</li>
+          <li>Tap Call (doesn't count), then pick an outcome. Save &amp; Next moves to the next prospect.</li>
+          <li>Confirm a suggested decision-maker; it's tracked separately from reaching them.</li>
+          <li>Set "2 weeks" as follow-up and watch it move to Upcoming under Follow Up Reminders.</li>
+          <li>Flag Opportunity identified; the company leaves the cold queue.</li>
+          <li>Finish the list to reveal Continue Prospecting. Try ZIP 48104.</li>
+        </ol>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h6 style="margin:0">Rules applied</h6>
+        <ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:14px; line-height:1.45; color:var(--color-neutral-800)">
+          <li>Queue of {{ target }}: {{ splitTop }} highest-priority eligible + {{ splitNew }} never-contacted (rounded), then sorted by score.</li>
+          <li>Default cadences: No Answer 3 days, Voicemail 5, Gatekeeper 7, Decision-Maker 14, Not interested now 60, Wrong Number none (no follow-up).</li>
+          <li>Explicit follow-up dates override cadence and surface under Due today.</li>
+          <li>Customer reminders and follow-ups never count toward the cold goal unless a cold attempt is saved.</li>
+          <li>Skip records nothing. ZIP search never reassigns.</li>
+        </ul>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h6 style="margin:0">Assumptions and questions for review</h6>
+        <ol style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:14px; line-height:1.45; color:var(--color-neutral-800)">
+          <li>Small-queue rounding: never-contacted share = round(target × 0.3). Confirm with engineering.</li>
+          <li>Wrong Number has no follow-up by default; the company stays out of queues. Should it also flag the record for L2 data correction?</li>
+          <li>"Not interested now" is a choice under Spoke to Decision-Maker, using the manager's 60-day setting.</li>
+          <li>Confirming a decision-maker and recording a quote save immediately (audited); outcomes save with Save &amp; Next.</li>
+          <li>Deal Won is omitted until you decide whether it stays in MVP.</li>
+          <li>Snooze defaults to 7 days. Is that the right default, and should managers set it?</li>
+          <li>Skipped prospects stay visible today and return in a later queue under normal ranking.</li>
+          <li>ptc.upfitopps.com styling wasn't verified; branding runs on the Broadsheet tokens with the distributor color swapped in.</li>
+        </ol>
+      </div>
+    </aside>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;distributorName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Truck Colors&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;White-label&quot;},&quot;brandColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#c8102e&quot;,&quot;options&quot;:[&quot;#c8102e&quot;,&quot;#0088b0&quot;,&quot;#1d6b3c&quot;,&quot;#2a3f9d&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;White-label&quot;},&quot;dailyTarget&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10,&quot;min&quot;:4,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Manager settings&quot;},&quot;leaderboard&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Manager settings&quot;},&quot;offline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;States&quot;}}">
+class Component extends DCLogic {
+  REPS = { jm: 'Jake Morrison', dr: 'Dana Ruiz', mb: 'Marcus Bell', ps: 'Priya Shah' };
+  SRC = { as: 'Adrian Steel VIO', tc: 'Distributor customer list' };
+  OUT = {
+    na: { l: 'No Answer', i: 'ph-phone-slash', cad: 3 },
+    vm: { l: 'Left Voicemail', i: 'ph-voicemail', cad: 5 },
+    gk: { l: 'Spoke to Gatekeeper', i: 'ph-user-switch', cad: 7 },
+    dm: { l: 'Spoke to Decision-Maker', i: 'ph-handshake', cad: 14 },
+    wn: { l: 'Wrong Number', i: 'ph-phone-x', cad: null },
+  };
+  EV = {
+    opp: { l: 'Opportunity identified', i: 'ph-flag-banner' },
+    pdm: { l: 'Primary decision-maker confirmed', i: 'ph-seal-check' },
+    quote: { l: 'Quote recorded', i: 'ph-receipt' },
+    remove: { l: 'Removed from outreach', i: 'ph-prohibit' },
+    dnc: { l: 'Marked Do Not Contact', i: 'ph-hand-palm' },
+    touch: { l: 'Already contacted · touch reset', i: 'ph-check-circle' },
+    snooze: { l: 'Reminder snoozed 7 days', i: 'ph-alarm' },
+    pdmrm: { l: 'Primary decision-maker removed', i: 'ph-user-minus' },
+  };
+  rootRef = React.createRef();
+  emailScroll = React.createRef();
+  queueScroll = React.createRef();
+  detailScroll = React.createRef();
+  contactsScroll = React.createRef();
+  secProspects = React.createRef(); secFollow = React.createRef(); secZip = React.createRef(); secLb = React.createRef();
+  blankF() { return { city: '', zip: '', ind: '', type: 'all', pri: 'all' }; }
+  backScreen() { return this.state.ctx === 'contacts' ? 'contacts' : 'queue'; }
+  indLabel = c => c.s.replace(/\s*contractor$/i, '');
+  scrollToSec(ref) { const c = this.queueScroll.current, el = ref.current; if (c && el) c.scrollTo({ top: el.offsetTop - 16, behavior: 'smooth' }); }
+
+  day = n => new Date(2026, 10, 19 + n);
+  fmt = n => this.day(n).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  isoOf = n => { const d = this.day(n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  rel = n => n === 0 ? 'today' : n === -1 ? 'yesterday' : n < 0 ? `${-n} days ago` : `in ${n} days`;
+  now = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  seed() {
+    const C = (id, n, a, c, z, p, w, i, s, t, v, mix, sc, why, o, src, x = {}) => ({ id, n, a, c, z, p, w, i, s, t, v, mix, sc, why, o, src, st: 'cold', fu: null, fuNote: '', cand: [], pdm: null, acts: [], q: 0, sup: null, snz: 0, ...x });
+    const A = (d, o, n = '', u = 'Jake Morrison', tm = '10:12 AM') => ({ d, o, n, u, tm });
+    const L = 'LinkedIn · Oct 2026', W = 'Company website · Sep 2026';
+    const list = [
+      C('c1', 'Huron Valley Plumbing & Mechanical', '2150 S Industrial Hwy', 'Ann Arbor, MI', '48104', '(734) 555-0142', 'huronvalleypm.com', 'Construction', 'Plumbing & HVAC contractor', 16, 22, 'Ford Transit 250 ×14 · Ram ProMaster ×8 · F-250 ×16', 4.8, '22 service vans, 9 at model year 2019 or older', 'jm', 'as', { cand: [['Rick Halvorsen', 'Owner / President', L], ['Tara Quinn', 'Fleet & Operations Manager', W]] }),
+      C('c2', 'Washtenaw Electric Co.', '880 Ecorse Rd', 'Ypsilanti, MI', '48197', '(734) 555-0187', 'washtenawelectric.com', 'Construction', 'Electrical contractor', 8, 18, 'Ford Transit ×12 · Chevy Express ×6 · F-150 ×8', 4.6, 'Van fleet grew by 6 units since 2024', 'jm', 'as', { cand: [['Steve Kowalski', 'Operations Director', L]], acts: [A(-6, 'na')] }),
+      C('c3', 'Great Lakes Fiber Splicing', '400 Woodland Dr', 'Saline, MI', '48176', '(734) 555-0119', 'glfibersplice.com', 'Telecommunications', 'Fiber & cable installation', 32, 9, 'F-350 ×20 · F-550 ×12 · Transit ×9', 4.5, 'Heavy-duty truck mix with upfit-intensive work', 'jm', 'as', { cand: [['Dana Whitfield', 'VP Field Operations', L], ['Mark Osei', 'Fleet Coordinator', W]], acts: [A(-12, 'vm', 'Left VM for Dana re: bin and ladder rack packages'), A(-20, 'na')] }),
+      C('c4', 'Arbor Pest Solutions', '3245 Packard St', 'Ann Arbor, MI', '48104', '(734) 555-0164', 'arborpest.com', 'Services', 'Pest control', 0, 19, 'Transit Connect ×11 · Transit 150 ×8', 4.4, 'All-van fleet on daily service routes', 'jm', 'as', { cand: [['Julie Brandt', 'General Manager', W]] }),
+      C('c5', 'Detroit Metro Glass & Glazing', '14100 Michigan Ave', 'Dearborn, MI', '48126', '(313) 555-0133', 'dmglass.com', 'Construction', 'Glass & glazing', 14, 8, 'F-250 ×9 · F-350 ×5 · ProMaster ×8', 4.3, 'Glass rack trucks, mostly 2018–2020', 'jm', 'as', { cand: [['Anthony Russo', 'Owner', L]], acts: [A(-8, 'vm', 'Left VM for owner about glass rack upfits')] }),
+      C('c6', 'Livonia Mechanical Services', '12500 Merriman Rd', 'Livonia, MI', '48150', '(734) 555-0171', 'livoniamech.com', 'Construction', 'HVAC service', 12, 21, 'Transit 250 ×15 · Express ×6 · Silverado ×12', 4.3, '33 units; service van share above 60%', 'jm', 'as', { cand: [['Greg Patel', 'Service Manager', W], ['Linda Moore', 'Controller', L]] }),
+      C('c7', 'Kensington Landscape Group', '9800 Grand River Ave', 'Brighton, MI', '48116', '(810) 555-0128', 'kensingtonlg.com', 'Services', 'Commercial landscaping', 28, 0, 'F-250 ×10 · F-350 dump ×12 · Silverado 2500 ×6', 4.2, 'Large pickup and dump fleet', 'jm', 'as', { cand: [['Paul Lindqvist', 'Owner', L]], acts: [A(-9, 'gk', 'Spoke with Amy at front desk. Owner is in on Thursdays.')] }),
+      C('c8', 'Clearwater Restoration', '6120 N Lilley Rd', 'Canton, MI', '48187', '(734) 555-0150', 'clearwaterresto.com', 'Services', 'Water & fire restoration', 6, 11, 'Transit 350 ×7 · Sprinter ×4 · F-250 ×6', 4.1, 'High-roof vans with equipment loads', 'jm', 'as', { cand: [['Erin Walsh', 'Operations Manager', W]], acts: [A(-5, 'na')] }),
+      C('c9', 'Plymouth Lock & Security', '455 Starkweather St', 'Plymouth, MI', '48170', '(734) 555-0108', 'plymouthlock.com', 'Services', 'Locksmith & access control', 0, 12, 'Transit Connect ×6 · Transit 150 ×6', 4.0, 'All-van fleet needing shelving', 'jm', 'as', { cand: [['Sam Becker', 'Owner', L]] }),
+      C('c10', 'Superior Utility Contractors', '7700 Geddes Rd', 'Ypsilanti, MI', '48198', '(734) 555-0193', 'superiorutility.com', 'Utilities', 'Underground utility contractor', 20, 4, 'F-550 ×8 · F-350 ×12 · Transit ×4', 3.9, 'Service-body trucks, several due for replacement', 'jm', 'as', { cand: [['Ray Dominguez', 'Fleet Manager', W]], acts: [A(-15, 'vm')] }),
+      C('c11', 'Novi Sign & Lighting', '24600 Novi Rd', 'Novi, MI', '48375', '(248) 555-0121', 'novisign.com', 'Manufacturing', 'Sign & lighting service', 9, 5, 'F-450 bucket ×4 · F-250 ×5 · Transit ×5', 3.9, 'Mixed fleet with bucket trucks', 'jm', 'as', { cand: [['Karen Holt', 'President', L]] }),
+      C('c12', 'Chelsea Well Drilling', '1200 Old US 12', 'Chelsea, MI', '48118', '(734) 555-0177', 'chelseawell.com', 'Construction', 'Well drilling & pump service', 11, 0, 'F-350 ×7 · F-550 ×4', 3.8, 'Pump service trucks with crane bodies', 'jm', 'as', { cand: [['Doug Fenner', 'Owner', W]] }),
+      C('c13', 'Rochester Hills Appliance Repair', '2900 S Rochester Rd', 'Rochester Hills, MI', '48307', '(248) 555-0146', 'rhappliance.com', 'Services', 'Appliance repair', 0, 16, 'ProMaster City ×10 · Transit ×6', 3.7, 'Compact vans, route-based', 'jm', 'as', { acts: [A(-10, 'na')] }),
+      C('c14', 'Westland Fire Protection', '35400 Ford Rd', 'Westland, MI', '48185', '(734) 555-0139', 'westlandfire.com', 'Services', 'Fire protection & sprinkler', 8, 12, 'Transit 250 ×12 · F-250 ×8', 3.7, 'Inspection vans plus pipe-rack trucks', 'jm', 'as', { cand: [['Nora Kim', 'Operations Lead', L]] }),
+      C('c15', 'Milford Septic & Drain', '600 N Milford Rd', 'Milford, MI', '48381', '(248) 555-0110', 'milfordseptic.com', 'Services', 'Septic & drain', 9, 0, 'F-550 ×5 · F-350 ×4', 3.6, 'Small heavy-truck fleet', 'jm', 'as'),
+      C('c16', 'Dexter Roofing Supply', '7400 Dexter-Ann Arbor Rd', 'Dexter, MI', '48130', '(734) 555-0182', 'dexterroofing.com', 'Construction', 'Roofing', 13, 2, 'F-350 ×9 · F-450 ×4 · Transit ×2', 3.5, 'Ladder-rack trucks', 'jm', 'as', { acts: [A(-18, 'vm')] }),
+      C('c17', 'Farmington Elevator Service', '31100 Grand River Ave', 'Farmington Hills, MI', '48335', '(248) 555-0155', 'farmingtonelevator.com', 'Services', 'Elevator service', 0, 13, 'Transit 150 ×8 · Express ×5', 3.4, 'Technician vans', 'jm', 'as'),
+      C('c18', 'Belleville Pool & Spa', '220 Main St', 'Belleville, MI', '48111', '(734) 555-0124', 'bellevillepool.com', 'Services', 'Pool & spa service', 3, 5, 'Transit Connect ×5 · F-150 ×3', 3.2, 'Seasonal route vans', 'jm', 'as'),
+      C('c19', 'Ann Arbor Office Interiors', '1890 W Stadium Blvd', 'Ann Arbor, MI', '48104', '(734) 555-0168', 'a2interiors.com', 'Services', 'Office furniture installation', 0, 7, 'Transit 350 ×7', 3.1, 'High-roof install vans', 'jm', 'as'),
+      C('c20', 'Taylor Industrial Pumps', '21500 Trolley Industrial Dr', 'Taylor, MI', '48180', '(313) 555-0117', 'taylorpumps.com', 'Manufacturing', 'Industrial pump service', 6, 4, 'F-350 ×6 · Transit ×4', 3.0, 'Service trucks with cranes', 'jm', 'as', { acts: [A(-7, 'na')] }),
+      C('c21', 'Ypsi Commercial Cleaning', '1015 E Michigan Ave', 'Ypsilanti, MI', '48197', '(734) 555-0191', 'ypsiclean.com', 'Services', 'Commercial cleaning', 2, 14, 'Transit 250 ×9 · ProMaster ×5', 3.6, 'Growing van fleet across 3 counties', 'jm', 'as', { fu: 0, fuNote: 'Asked to call back after Wednesday board meeting', pdm: { name: 'Maria Lopez', title: 'Operations Manager', phone: '(734) 555-0192', email: 'mlopez@ypsiclean.com', by: 'Confirmed by Jake Morrison · Nov 12' }, cand: [['Maria Lopez', 'Operations Manager', L]], acts: [A(-7, 'dm', 'Board approves fleet budget Wednesday. Call Thursday.'), A(-14, 'gk')] }),
+      C('c22', 'Wixom Cable & Data', '48900 West Rd', 'Wixom, MI', '48393', '(248) 555-0136', 'wixomcable.com', 'Telecommunications', 'Structured cabling', 10, 6, 'F-250 ×10 · Transit ×6', 4.0, 'Ladder-rack vans and trucks', 'jm', 'as', { fu: -1, fuNote: 'Fleet manager back from leave on the 18th', cand: [['Chris Novak', 'Fleet Manager', W]], acts: [A(-10, 'gk', 'Receptionist said fleet manager returns on the 18th.')] }),
+      C('c23', 'Canton Overhead Doors', '44200 Michigan Ave', 'Canton, MI', '48188', '(734) 555-0148', 'cantondoors.com', 'Construction', 'Overhead door installation', 12, 3, 'F-350 ×8 · F-250 ×4 · Transit ×3', 3.9, 'Door-rack trucks', 'jm', 'as', { fu: 14, fuNote: 'Revisit after Q1 budget is set', pdm: { name: 'Bill Sorensen', title: 'Owner', phone: '', email: '', by: 'Confirmed by Jake Morrison · Nov 17' }, acts: [A(-2, 'dm', 'Interested in spring. Call back in two weeks.')] }),
+      C('c24', 'Brightline Electric', '3400 Washtenaw Ave', 'Ann Arbor, MI', '48108', '(734) 555-0105', 'brightline-electric.com', 'Construction', 'Electrical contractor', 6, 9, 'Transit ×9 · F-250 ×6', 3.4, 'Existing customer', 'jm', 'tc', { st: 'customer', ti: 30, lt: -41, pdm: { name: 'Jen Alvarez', title: 'Fleet Manager', phone: '(734) 555-0106', email: 'jen@brightline-electric.com', by: 'Confirmed by Jake Morrison · Mar 4' }, acts: [A(-41, 'dm', 'Touch base. Two vans planned for Q1.')] }),
+      C('c25', 'Saline Plumbing Co.', '120 W Michigan Ave', 'Saline, MI', '48176', '(734) 555-0161', 'salineplumbing.com', 'Construction', 'Plumbing contractor', 4, 7, 'ProMaster ×7 · F-250 ×4', 3.2, 'Existing customer', 'jm', 'tc', { st: 'customer', ti: 45, lt: -47, acts: [A(-47, 'vm')] }),
+      C('c26', 'A2 Facility Services', '500 S State St', 'Ann Arbor, MI', '48104', '(734) 555-0115', 'a2facility.com', 'Services', 'Facility maintenance', 3, 10, 'Transit ×10 · F-150 ×3', 3.0, 'Existing customer', 'jm', 'tc', { st: 'customer', ti: 60, lt: -12 }),
+      C('c27', 'Michigan Medical Courier', '2311 S Main St', 'Ann Arbor, MI', '48104', '(734) 555-0157', 'mimedcourier.com', 'Transportation', 'Medical courier', 0, 31, 'Transit 150 ×19 · ProMaster City ×12', 4.7, 'Large van fleet, temperature-controlled', 'mb', 'as', { acts: [A(-3, 'vm', '', 'Marcus Bell')] }),
+      C('c28', 'Kerrytown Catering', '407 N Fifth Ave', 'Ann Arbor, MI', '48104', '(734) 555-0102', 'kerrytowncatering.com', 'Food service', 'Catering', 2, 4, 'Transit ×4 · F-150 ×2', 2.9, 'Small delivery fleet', 'dr', 'as'),
+      C('c29', 'State Street Plumbing', '1300 S State St', 'Ann Arbor, MI', '48104', '(734) 555-0174', 'statestplumbing.com', 'Construction', 'Plumbing contractor', 5, 7, 'Express ×7 · F-250 ×5', 3.3, 'Van-heavy service fleet', null, 'as'),
+      C('c30', 'Lakeside Mechanical', '900 Wildwood Ave', 'Jackson, MI', '49201', '(517) 555-0140', 'lakesidemech.com', 'Construction', 'HVAC contractor', 9, 14, 'Transit ×14 · F-250 ×9', 4.4, 'Opportunity in progress', 'jm', 'as', { st: 'opp', acts: [A(-4, 'opp', 'Replacing 6 vans in spring')] }),
+    ];
+    list.forEach(c => {
+      const last = c.acts.find(a => this.OUT[a.o]);
+      c.ne = last ? last.d + this.OUT[last.o].cad : 0;
+      c.cand = c.cand.map(([name, title, src]) => ({ name, title, src }));
+      c.acts.forEach(a => { if (c.pdm == null) return; });
+    });
+    const m = {}; list.forEach(c => (m[c.id] = c)); return m;
+  }
+
+  target() { return this.props.dailyTarget ?? 10; }
+  attemptsOf(c) { return c.acts.filter(a => this.OUT[a.o]).length; }
+  eligible(cs) {
+    return Object.values(cs).filter(c => c.o === 'jm' && c.st === 'cold' && !c.sup && c.fu == null && c.ne <= 0).sort((a, b) => b.sc - a.sc);
+  }
+  buildQueue(cs, target) {
+    const el = this.eligible(cs);
+    const nNew = Math.round(target * 0.3), nTop = target - nNew;
+    const top = el.slice(0, nTop);
+    const fresh = el.filter(c => !top.includes(c) && this.attemptsOf(c) === 0).slice(0, nNew);
+    let q = [...top, ...fresh];
+    if (q.length < target) q = q.concat(el.filter(c => !q.includes(c)).slice(0, target - q.length));
+    return q.sort((a, b) => b.sc - a.sc).map(c => ({ id: c.id, status: 'open', result: '', fresh: this.attemptsOf(c) === 0 }));
+  }
+  blankDraft() { return { o: null, ni: false, fu: null, note: '', gk: '', opp: false, oppDesc: '', pick: null, rm: null, quote: false }; }
+  initState() {
+    const cs = this.seed();
+    return { cs, queue: this.buildQueue(cs, this.target()), screen: 'email', cur: null, ctx: 'queue', attempts: 0, draft: this.blankDraft(), toast: '', zip: '', lb: 'wtd', showAll: false, f: this.blankF(), saving: false, manual: null, rm: null, verified: false };
+  }
+  state = this.initState();
+
+  lbOn() { try { const v = localStorage.getItem('upfitopps.demo.leaderboard'); if (v) return v === 'on'; } catch (e) {} return this.props.leaderboard ?? true; }
+  componentWillUnmount() { window.removeEventListener('storage', this._onStore); }
+  componentDidMount() { this._onStore = () => this.forceUpdate(); window.addEventListener('storage', this._onStore); this.applyBrand(); this._prevTarget = this.props.dailyTarget; this._prev = { cur: this.state.cur, screen: this.state.screen, toast: this.state.toast }; }
+  componentDidUpdate() {
+    this.applyBrand();
+    const s = this.state, prev = this._prev || {};
+    const t = this.props.dailyTarget;
+    if (this._prevTarget !== undefined && this._prevTarget !== t) { this._prevTarget = t; this.setState(this.initState()); return; }
+    this._prevTarget = t;
+    if (prev.cur !== s.cur || prev.screen !== s.screen) {
+      [this.emailScroll, this.queueScroll, this.detailScroll, this.contactsScroll].forEach(r => r.current && (r.current.scrollTop = 0));
+    }
+    if (s.toast && prev.toast !== s.toast) {
+      clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 3200);
+    }
+    this._prev = { cur: s.cur, screen: s.screen, toast: s.toast };
+  }
+  applyBrand() {
+    const el = this.rootRef.current; if (!el) return;
+    const c = this.props.brandColor ?? '#c8102e';
+    if (el._brand === c) return; el._brand = c;
+    const mix = (p, w) => `color-mix(in oklch, ${c} ${p}%, ${w})`;
+    const set = (k, v) => el.style.setProperty(k, v);
+    set('--color-bg', '#fff');
+    set('--color-accent', c);
+    set('--color-accent-100', mix(9, '#fff')); set('--color-accent-200', mix(18, '#fff')); set('--color-accent-300', mix(34, '#fff'));
+    set('--color-accent-400', mix(62, '#fff')); set('--color-accent-500', c);
+    set('--color-accent-600', mix(86, '#000')); set('--color-accent-700', mix(72, '#000')); set('--color-accent-800', mix(56, '#000')); set('--color-accent-900', mix(40, '#000'));
+  }
+
+  patch(id, fn, extra = {}) {
+    this.setState(st => { const cs = { ...st.cs }; const co = { ...cs[id], acts: [...cs[id].acts] }; fn(co, st); cs[id] = co; return { cs, ...(typeof extra === 'function' ? extra(st, co) : extra) }; });
+  }
+  open(id, ctx) {
+    const first = !this.state.verified;
+    this.setState({ screen: 'detail', cur: id, ctx, draft: this.blankDraft(), manual: null, rm: null, showAll: false, verified: true, ...(first ? { toast: 'Device verified · you stay signed in for 30 days' } : {}) });
+  }
+  goQueue() {
+    const first = !this.state.verified;
+    this.setState({ screen: 'queue', verified: true, manual: null, rm: null, ...(first ? { toast: 'Device verified · you stay signed in for 30 days' } : {}) });
+  }
+  advance() {
+    const s = this.state;
+    if (s.ctx !== 'queue') return this.setState({ screen: this.backScreen() });
+    const i = s.queue.findIndex(q => q.id === s.cur);
+    const nxt = s.queue.slice(i + 1).find(q => q.status === 'open') || s.queue.find(q => q.status === 'open');
+    if (nxt) this.setState({ cur: nxt.id, draft: this.blankDraft(), manual: null, rm: null, showAll: false });
+    else this.setState({ screen: 'queue' });
+  }
+  inQueue() { return this.state.ctx === 'queue' && this.state.queue.some(q => q.id === this.state.cur); }
+  markQueue(st, id, status, result) { return st.queue.map(q => q.id === id ? { ...q, status, result } : q); }
+
+  save() {
+    const s = this.state, d = s.draft;
+    if (s.saving || !(d.o || d.opp || d.rm || d.quote)) return;
+    this.setState({ saving: true });
+    setTimeout(() => {
+      this.setState(st => {
+        const cs = { ...st.cs }; const co = { ...cs[st.cur], acts: [...cs[st.cur].acts] };
+        const tm = this.now(); let attempts = st.attempts; let msg = [];
+        if (d.o) {
+          const cad = d.o === 'dm' && d.ni ? 60 : this.OUT[d.o].cad;
+          let note = d.note.trim();
+          if (d.o === 'gk' && d.gk) note = `Spoke with ${d.gk}. ${note}`.trim();
+          if (d.o === 'dm' && d.ni) note = `Not interested now. ${note}`.trim();
+          if (d.o === 'dm' && d.pick != null && !co.pdm) {
+            const k = co.cand[d.pick];
+            co.pdm = { name: k.name, title: k.title, phone: '', email: '', by: `Confirmed by Jake Morrison · ${this.fmt(0)}` };
+            co.acts.unshift({ d: 0, o: 'pdm', n: `${k.name}, ${k.title}`, u: 'Jake Morrison', tm });
+          }
+          co.acts.unshift({ d: 0, o: d.o, n: note, u: 'Jake Morrison', tm });
+          if (co.st === 'cold') attempts++;
+          if (co.st === 'customer') co.lt = 0;
+          msg.push(`${this.OUT[d.o].l} saved`);
+          if (d.fu != null) { co.fu = d.fu; co.fuNote = d.note.trim() || 'Requested follow-up'; msg.push(`follow-up ${this.fmt(d.fu)}`); }
+          else if (cad == null) { co.fu = null; co.ne = 99999; msg.push('no follow-up until the number is corrected'); }
+          else { co.fu = null; co.ne = cad; if (co.st === 'cold') msg.push(`next eligible ${this.fmt(cad)}`); }
+        }
+        if (d.opp) { co.st = 'opp'; co.acts.unshift({ d: 0, o: 'opp', n: d.oppDesc.trim(), u: 'Jake Morrison', tm }); msg.push('opportunity flagged, removed from cold queue'); }
+        if (d.quote) { co.q++; co.acts.unshift({ d: 0, o: 'quote', n: `Quote count now ${co.q}`, u: 'Jake Morrison', tm }); msg.push('quote recorded'); }
+        if (d.rm) { co.sup = d.rm; co.acts.unshift({ d: 0, o: d.rm, n: '', u: 'Jake Morrison', tm }); msg.push(d.rm === 'dnc' ? 'marked Do Not Contact' : 'removed from outreach'); }
+        if (!msg.length) msg.push('Saved');
+        msg[0] = msg[0][0].toUpperCase() + msg[0].slice(1);
+        cs[co.id] = co;
+        const exit = d.opp || d.rm;
+        const queue = this.markQueue(st, co.id, exit ? 'exited' : 'done', d.opp ? 'Opportunity identified' : d.rm ? 'Removed' : d.o ? this.OUT[d.o].l : 'Quote recorded');
+        if (this.props.offline) msg.push('will sync when online');
+        return { cs, queue, attempts, saving: false, toast: msg.join(' · ') };
+      }, () => this.advance());
+    }, 450);
+  }
+  skip() {
+    this.setState(st => ({ queue: this.markQueue(st, st.cur, 'skipped', 'Skipped'), toast: 'Skipped · nothing recorded' }), () => this.advance());
+  }
+  confirmCand(i) {
+    const k = this.state.cs[this.state.cur].cand[i];
+    this.patch(this.state.cur, co => {
+      co.pdm = { name: k.name, title: k.title, phone: '', email: '', by: `Confirmed by Jake Morrison · ${this.fmt(0)}` };
+      co.acts.unshift({ d: 0, o: 'pdm', n: `${k.name}, ${k.title}`, u: 'Jake Morrison', tm: this.now() });
+    }, { toast: `${k.name} confirmed as primary decision-maker` });
+  }
+  saveManualPdm() {
+    const m = this.state.manual; if (!m || !m.name.trim()) return;
+    this.patch(this.state.cur, co => {
+      co.pdm = { ...m, by: `Confirmed by Jake Morrison · ${this.fmt(0)}` };
+      co.acts.unshift({ d: 0, o: 'pdm', n: `${m.name}${m.title ? ', ' + m.title : ''}`, u: 'Jake Morrison', tm: this.now() });
+    }, { manual: null, toast: `${m.name} confirmed as primary decision-maker` });
+  }
+  pField(k) { return e => { const v = e.target.value; this.patch(this.state.cur, co => { co.pdm = { ...co.pdm, [k]: v }; }); }; }
+  newPdmInline() { this.patch(this.state.cur, co => { co.pdm = { name: '', title: '', phone: '', email: '', notes: '', pending: true }; }); }
+  confirmManualPdm() {
+    const p = this.state.cs[this.state.cur].pdm; if (!p || !p.name.trim()) return;
+    this.patch(this.state.cur, co => { co.pdm = { ...co.pdm, pending: false, by: `Confirmed by Jake Morrison · ${this.fmt(0)}` }; co.acts.unshift({ d: 0, o: 'pdm', n: `${p.name}${p.title ? ', ' + p.title : ''}`, u: 'Jake Morrison', tm: this.now() }); }, { toast: `${p.name} confirmed as primary decision-maker` });
+  }
+  removePdm() {
+    const p = this.state.cs[this.state.cur].pdm; if (!p) return;
+    this.patch(this.state.cur, co => { co.pdm = null; if (!p.pending) co.acts.unshift({ d: 0, o: 'pdmrm', n: p.name, u: 'Jake Morrison', tm: this.now() }); }, p.pending ? {} : { toast: `${p.name} removed as primary` });
+  }
+  addQuote() {
+    this.patch(this.state.cur, co => { co.q++; co.acts.unshift({ d: 0, o: 'quote', n: `Quote count now ${co.q}`, u: 'Jake Morrison', tm: this.now() }); },
+      (st, co) => ({ toast: `Quote recorded · ${co.q} total · logged to Jake Morrison` }));
+  }
+  confirmRemove() {
+    const kind = this.state.rm;
+    this.patch(this.state.cur, co => { co.sup = kind; co.acts.unshift({ d: 0, o: kind, n: '', u: 'Jake Morrison', tm: this.now() }); },
+      st => ({ rm: null, queue: this.markQueue(st, st.cur, 'exited', kind === 'dnc' ? 'Do not contact' : 'Removed'), toast: kind === 'dnc' ? 'Marked Do Not Contact' : 'Removed from outreach · manager can restore' }));
+    setTimeout(() => this.advance(), 0);
+  }
+  touch(kind) {
+    this.patch(this.state.cur, co => {
+      if (kind === 'touch') co.lt = 0; else co.snz = 7;
+      co.acts.unshift({ d: 0, o: kind, n: '', u: 'Jake Morrison', tm: this.now() });
+    }, (st, co) => ({ screen: this.backScreen(), toast: kind === 'touch' ? `Touch reset · next reminder in ${co.ti} days` : 'Snoozed · back in 7 days' }));
+  }
+  continueProspecting() {
+    this.setState(st => {
+      const ids = st.queue.map(q => q.id);
+      const more = this.eligible(st.cs).filter(c => !ids.includes(c.id)).slice(0, 5).map(c => ({ id: c.id, status: 'open', result: '', fresh: this.attemptsOf(c) === 0 }));
+      if (!more.length) return { toast: 'No more eligible prospects today' };
+      return { queue: [...st.queue, ...more], screen: 'detail', cur: more[0].id, ctx: 'queue', draft: this.blankDraft() };
+    });
+  }
+  setDraft(p) { this.setState(st => ({ draft: { ...st.draft, ...p } })); }
+
+  dueList(cs) {
+    const v = Object.values(cs).filter(c => c.o === 'jm' && !c.sup);
+    const fu = v.filter(c => c.fu != null && c.fu <= 0).map(c => ({ c, kind: 'Follow-up', tagClass: 'tag-accent', reason: `${c.fu === 0 ? 'Requested for today' : 'Requested ' + this.rel(c.fu)} · ${c.fuNote}` }));
+    const cu = v.filter(c => c.st === 'customer' && c.lt + c.ti <= 0 && !c.snz).map(c => ({ c, kind: 'Customer', tagClass: 'tag-neutral', reason: `Last recorded touch ${-c.lt} days ago · every ${c.ti} days` }));
+    return [...fu, ...cu];
+  }
+
+  renderVals() {
+    const s = this.state, cs = s.cs, target = this.target();
+    const brandName = this.props.distributorName ?? 'Truck Colors';
+    const due = this.dueList(cs);
+    const meta = c => `${c.c.replace(', MI', '')} · ${this.indLabel(c)}`;
+    const fleetLine = c => `${c.t + c.v} vehicles · ${c.v} vans, ${c.t} trucks`;
+    const lastOf = c => { const a = c.acts.find(x => this.OUT[x.o]); return a ? `${this.OUT[a.o].l}, ${a.d === 0 ? 'today' : this.fmt(a.d)}` : null; };
+
+    const queueItems = s.queue.map((q, i) => {
+      const c = cs[q.id];
+      const isDone = q.status !== 'open';
+      return { rank: i + 1, name: c.n, meta: meta(c), score: c.sc.toFixed(1), isDone, notDone: !isDone, doneIcon: q.status === 'skipped' ? 'ph-arrow-bend-down-right' : q.status === 'exited' ? 'ph-flag-banner' : 'ph-check-circle', opacity: q.status === 'done' || q.status === 'exited' ? 0.5 : 1, open: () => this.open(c.id, 'queue') };
+    });
+    const openLeft = s.queue.filter(q => q.status === 'open').length;
+    const showContinue = openLeft === 0 || s.attempts >= target;
+    const remaining = Math.max(0, target - s.attempts);
+
+    const zip = s.zip;
+    let zipResults = [], zipMsg = 'Shows cold prospects in exactly this ZIP, by priority. Searching never changes ownership.';
+    if (zip.length === 5) {
+      zipResults = Object.values(cs).filter(c => c.z === zip && c.st === 'cold' && !c.sup).sort((a, b) => b.sc - a.sc)
+        .map(c => ({ name: c.n, score: c.sc.toFixed(1), addr: c.a, phone: c.p, owner: c.o ? this.REPS[c.o] : 'Unassigned', last: lastOf(c) ? `Last: ${lastOf(c)}` : 'Never contacted', open: () => this.open(c.id, 'zip') }));
+      zipMsg = zipResults.length ? `${zipResults.length} cold prospects in ${zip}` : `No cold prospects in ${zip}.`;
+    } else if (zip.length > 0) zipMsg = 'Enter all five digits.';
+
+    const upcoming = Object.values(cs).filter(c => c.o === 'jm' && c.fu != null && c.fu > 0 && !c.sup).sort((a, b) => a.fu - b.fu)
+      .map(c => ({ date: this.fmt(c.fu), name: c.n, note: c.fuNote, open: () => this.open(c.id, 'other') }));
+
+    const allActs = Object.values(cs).flatMap(c => c.acts.filter(a => a.d === 0 && a.u === 'Jake Morrison'));
+    const liveDm = allActs.filter(a => a.o === 'dm').length, liveOpp = allActs.filter(a => a.o === 'opp').length;
+    const LB = { today: { jm: [0, 0, 0], dr: [7, 1, 0], mb: [5, 0, 0], ps: [9, 2, 1] }, wtd: { jm: [31, 4, 1], dr: [38, 5, 2], mb: [26, 2, 0], ps: [44, 6, 2] }, month: { jm: [148, 17, 4], dr: [162, 19, 6], mb: [121, 11, 2], ps: [171, 22, 5] } };
+    const days = { today: 1, wtd: 4, month: 14 }[s.lb];
+    const lbRows = Object.entries(LB[s.lb]).map(([k, [a, dm, opp]]) => {
+      if (k === 'jm') { a += s.attempts; dm += liveDm; opp += liveOpp; }
+      return { k, name: this.REPS[k], a, pct: Math.round((a / (target * days)) * 100) + '%', dm, opp, conv: dm ? Math.round((opp / dm) * 100) + '%' : '—', weight: k === 'jm' ? 600 : 400 };
+    }).sort((x, y) => y.a - x.a).map((r, i) => ({ ...r, rank: i + 1 }));
+    const ff = s.f;
+    const mine = Object.values(cs).filter(c => c.o === 'jm');
+    const typeOf = c => c.st === 'customer' ? 'Past customer' : c.st === 'opp' ? 'Opportunity' : 'Cold prospect';
+    const contactRows = mine.filter(c => (!ff.city || c.c === ff.city) && (!ff.zip || c.z.startsWith(ff.zip)) && (!ff.ind || this.indLabel(c) === ff.ind)
+      && (ff.type === 'all' || (ff.type === 'cold' ? c.st === 'cold' : c.st === 'customer'))
+      && (ff.pri === 'all' || (ff.pri === 'hi' ? c.sc >= 4 : ff.pri === 'mid' ? c.sc >= 3 && c.sc < 4 : c.sc < 3)))
+      .sort((a, b) => b.sc - a.sc)
+      .map(c => ({ name: c.n, meta: `${c.c.replace(', MI', '')} · ${this.indLabel(c)} · ${typeOf(c)}`, zip: c.z, score: c.sc.toFixed(1), open: () => this.open(c.id, 'contacts') }));
+    const setF = p => this.setState(st => ({ f: { ...st.f, ...p } }));
+
+    // detail
+    const co = s.cur ? cs[s.cur] : null;
+    let c = { cands: [], acts: [] };
+    if (co) {
+      const attempts = this.attemptsOf(co);
+      const qi = s.queue.findIndex(q => q.id === co.id);
+      const next = co.fu != null ? `${this.fmt(co.fu)} (requested)` : co.st === 'cold' ? (co.sup ? '—' : co.ne <= 0 ? 'Eligible now' : co.ne > 9999 ? 'No follow-up' : this.fmt(co.ne)) : co.st === 'customer' ? this.fmt(co.lt + co.ti) : '—';
+      const stateMap = { cold: ['Cold prospect', 'tag-accent'], customer: ['Existing customer', 'tag-neutral'], opp: ['Opportunity identified', 'tag-accent-2'] };
+      const [stateLabel, stateClass] = co.sup ? [co.sup === 'dnc' ? 'Do not contact' : 'Removed from outreach', 'tag-accent-2'] : stateMap[co.st];
+      c = {
+        name: co.n, score: co.sc.toFixed(1), industry: `${co.i} · ${co.s}`, addr: co.a, city: co.c, zip: co.z, phone: co.p,
+        tel: 'tel:' + co.p.replace(/\D/g, ''), mapUrl: 'https://maps.google.com/?q=' + encodeURIComponent(`${co.a}, ${co.c} ${co.z}`), webUrl: 'https://' + co.w,
+        owner: co.o ? this.REPS[co.o] : 'Unassigned', source: this.SRC[co.src], stateLabel, stateClass,
+        position: this.inQueue() ? `${qi + 1} of ${s.queue.length} today` : s.ctx === 'zip' ? `ZIP ${co.z}` : '',
+        attempts, last: lastOf(co) || 'None yet', next,
+        total: co.t + co.v, trucks: co.t, vans: co.v, mix: co.mix, why: co.why,
+        isCustomer: co.st === 'customer', touchLine: co.st === 'customer' ? `Every ${co.ti} days · last recorded touch ${co.lt === 0 ? 'today' : -co.lt + ' days ago'}. Upfit Opps only knows about touches recorded here.` : '',
+        hasPdm: !!co.pdm, noPdm: !co.pdm,
+        pdmName: co.pdm?.name || '', pdmTitle: co.pdm?.title || '', pdmPhone: co.pdm?.phone || '', pdmEmail: co.pdm?.email || '', pdmNotes: co.pdm?.notes || '',
+        pdmPending: !!co.pdm?.pending, pdmNoName: !(co.pdm?.name || '').trim(),
+        pdmTag: co.pdm?.pending ? 'New · not yet confirmed' : 'Confirmed primary', pdmTagClass: co.pdm?.pending ? 'tag-outline' : 'tag-accent',
+        pdmRemoveLabel: co.pdm?.pending ? 'Cancel' : 'Remove as primary',
+        pdmBy: co.pdm?.pending ? '' : (co.pdm?.by || ''),
+        cands: co.cand.filter(k => !co.pdm || k.name !== co.pdm.name).map((k) => {
+          const idx = co.cand.indexOf(k);
+          return { ...k, action: co.pdm ? 'Make primary' : 'Confirm', confirm: () => this.confirmCand(idx) };
+        }),
+        quotes: co.q,
+        acts: co.acts.map(a => {
+          const def = this.OUT[a.o] || this.EV[a.o];
+          return { icon: def.i, label: def.l, when: a.d === 0 ? `Today ${a.tm}` : this.fmt(a.d), user: a.u, note: a.n };
+        }),
+        noActs: co.acts.length === 0,
+      };
+      c.hasCands = c.cands.length > 0;
+      c.candsIntro = co.pdm ? 'Other suggested candidates' : 'Suggested candidates · not verified';
+      c.actsShown = s.showAll ? c.acts : c.acts.slice(0, 1);
+      c.hasMoreActs = c.acts.length > 1;
+    }
+    const d = s.draft;
+    const outcomes = Object.entries(this.OUT).map(([k, o]) => ({ label: o.l, icon: o.i, cls: d.o === k ? 'btn-primary' : 'btn-secondary', bg: d.o === k ? 'var(--color-accent)' : 'var(--color-surface)', select: () => this.setDraft({ o: d.o === k ? null : k, fu: null }) }));
+    const cad = d.o ? (d.o === 'dm' && d.ni ? 60 : this.OUT[d.o].cad) : 0;
+    const fuOpts = [[1, 'Tomorrow'], [7, '1 Week'], [14, '2 Weeks']];
+    const fuChips = fuOpts.map(([v, label]) => ({ label, cls: d.fu === v ? 'btn-primary' : 'btn-secondary', pick: () => this.setDraft({ fu: d.fu === v ? null : v }) }));
+    const fuHint = d.fu == null ? `Uses your manager's ${cad}-day setting for ${d.o === 'dm' && d.ni ? 'not interested now' : (d.o ? this.OUT[d.o].l : '')}.` : `Requested date ${this.fmt(d.fu)} overrides the default and appears under Due today.`;
+    const dmChoices = co ? co.cand.map((k, i) => ({ name: k.name, cls: d.pick === i ? 'btn-primary' : 'btn-secondary', pick: () => this.setDraft({ pick: d.pick === i ? null : i }) })) : [];
+
+    const inQ = this.inQueue();
+    const qItem = s.queue.find(q => q.id === s.cur);
+    const canSave = !!(d.o || d.opp || d.rm || d.quote);
+    let leftLabel, rightLabel, onLeft, onRight;
+    if (inQ) {
+      leftLabel = 'Skip'; onLeft = () => this.skip();
+      if (!canSave && qItem && qItem.status !== 'open') { rightLabel = 'Next'; onRight = () => this.advance(); }
+      else { rightLabel = s.saving ? 'Saving…' : 'Next'; onRight = () => this.save(); }
+    } else {
+      leftLabel = 'Back'; onLeft = () => this.setState({ screen: this.backScreen() });
+      rightLabel = s.saving ? 'Saving…' : 'Save'; onRight = () => this.save();
+    }
+    const rightDisabled = s.saving || (!canSave && !(inQ && qItem && qItem.status !== 'open'));
+    const track = on => on ? 'var(--color-accent)' : 'var(--color-neutral-300)', knob = on => on ? '23px' : '3px';
+    const barHint = canSave ? 'Saves and moves on' : (inQ && qItem && qItem.status !== 'open') ? '' : '';
+    const mset = k => e => { const v = e.target.value; this.setState(st => ({ manual: { ...st.manual, [k]: v } })); };
+
+    return {
+      frameW: 402, frameH: 874, offline: !!this.props.offline && s.screen !== 'email',
+      rootRef: this.rootRef, emailScroll: this.emailScroll, queueScroll: this.queueScroll, detailScroll: this.detailScroll,
+      brandName, brandInitial: brandName.trim()[0] || 'T', target,
+      isEmail: s.screen === 'email', isQueue: s.screen === 'queue', isDetail: s.screen === 'detail',
+      emailStarters: s.queue.slice(0, 5).map((q, i) => { const co = cs[q.id]; return { rank: i + 1, name: co.n, meta: `${co.c.replace(', MI', '')} · ${co.t + co.v} vehicles`, score: co.sc.toFixed(1), open: () => this.open(co.id, 'queue') }; }),
+      emailDue: due.map(x => ({ name: x.c.n, kind: x.kind, reason: x.reason, open: () => this.open(x.c.id, 'other') })),
+      openQueue: () => this.goQueue(),
+      attempts: s.attempts, pct: Math.min(100, (s.attempts / target) * 100) + '%',
+      remainingLabel: remaining ? `${remaining} to go` : 'Goal reached',
+      hasDue: due.length > 0,
+      dueItems: due.map(x => ({ name: x.c.n, kind: x.kind, tagClass: x.tagClass, reason: x.reason, open: () => this.open(x.c.id, 'other') })),
+      queueItems, showContinue,
+      navItems: [
+        { icon: 'ph-target', label: 'Prospects', go: () => this.scrollToSec(this.secProspects) },
+        { icon: 'ph-bell-ringing', label: 'Follow-ups', go: () => this.scrollToSec(this.secFollow) },
+        { icon: 'ph-map-pin', label: 'ZIP', go: () => this.scrollToSec(this.secZip) },
+        { icon: 'ph-address-book', label: 'Contacts', go: () => this.setState({ screen: 'contacts' }) },
+        ...(this.lbOn() ? [{ icon: 'ph-trophy', label: 'Leaders', go: () => this.scrollToSec(this.secLb) }] : []),
+      ],
+      secProspects: this.secProspects, secFollow: this.secFollow, secZip: this.secZip, secLb: this.secLb, contactsScroll: this.contactsScroll,
+      progressSegs: Array.from({ length: target }, (_, i) => ({ bg: i < s.attempts ? 'var(--color-accent)' : 'var(--color-neutral-200)' })),
+      start: () => { const q = s.queue.find(q => q.status === 'open'); if (q) this.open(q.id, 'queue'); else this.continueProspecting(); },
+      followItems: due.map(x => ({ name: x.c.n, meta: `${meta(x.c)}${x.c.st === 'customer' ? ' · Customer' : ''}`, last: lastOf(x.c) ? `Last: ${lastOf(x.c)}` : 'No recorded outreach', note: x.c.st === 'customer' ? `Touch base every ${x.c.ti} days · last recorded touch ${-x.c.lt} days ago` : `${x.c.fu === 0 ? 'Due today' : 'Due ' + this.rel(x.c.fu)}: ${x.c.fuNote}`, open: () => this.open(x.c.id, 'other') })),
+      noFollow: due.length === 0,
+      isContacts: s.screen === 'contacts', contactRows, noContacts: contactRows.length === 0,
+      contactCount: `${contactRows.length} of ${mine.length}`,
+      f: ff, cityOpts: [...new Set(mine.map(c => c.c))].sort(), indOpts: [...new Set(mine.map(c => this.indLabel(c)))].sort(),
+      onFCity: e => setF({ city: e.target.value }), onFInd: e => setF({ ind: e.target.value }), onFZip: e => setF({ zip: e.target.value.replace(/\D/g, '').slice(0, 5) }),
+      ftAll: ff.type === 'all', ftCold: ff.type === 'cold', ftCust: ff.type === 'cust',
+      setFtAll: () => setF({ type: 'all' }), setFtCold: () => setF({ type: 'cold' }), setFtCust: () => setF({ type: 'cust' }),
+      fpAll: ff.pri === 'all', fpHi: ff.pri === 'hi', fpMid: ff.pri === 'mid', fpLo: ff.pri === 'lo',
+      setFpAll: () => setF({ pri: 'all' }), setFpHi: () => setF({ pri: 'hi' }), setFpMid: () => setF({ pri: 'mid' }), setFpLo: () => setF({ pri: 'lo' }),
+      hasFilters: !!(ff.city || ff.zip || ff.ind || ff.type !== 'all' || ff.pri !== 'all'), clearFilters: () => this.setState({ f: this.blankF() }),
+      backLabel: s.ctx === 'contacts' ? 'Contacts' : 'Queue',
+      continueMsg: s.attempts >= target ? `Goal reached. Nice work. Keep going with the next best prospects.` : `You've worked through today's list. More eligible prospects are ready.`,
+      continueProspecting: () => this.continueProspecting(),
+      zip, onZip: e => this.setState({ zip: e.target.value.replace(/\D/g, '').slice(0, 5) }), zipResults, zipMsg,
+      upcoming, hasUpcoming: upcoming.length > 0,
+      lbEnabled: this.lbOn(), lbRows,
+      lbToday: s.lb === 'today', lbWeek: s.lb === 'wtd', lbMonth: s.lb === 'month',
+      lbSetToday: () => this.setState({ lb: 'today' }), lbSetWeek: () => this.setState({ lb: 'wtd' }), lbSetMonth: () => this.setState({ lb: 'month' }),
+      c, draft: d, outcomes,
+      hasOutcome: !!d.o, showNote: d.o === 'gk' || d.o === 'dm', isGk: d.o === 'gk', isDm: d.o === 'dm', dmFollow: !d.ni, dmNi: d.ni,
+      setDmFollow: () => this.setDraft({ ni: false }), setDmNi: () => this.setDraft({ ni: true }),
+      dmAsk: d.o === 'dm' && co && !co.pdm && co.cand.length > 0, dmChoices,
+      onGk: e => this.setDraft({ gk: e.target.value }), onNote: e => this.setDraft({ note: e.target.value }),
+      fuChips, fuHint, fuDate: d.fu != null ? this.isoOf(d.fu) : '',
+      onFuDate: e => { const [y, m, dd] = e.target.value.split('-').map(Number); if (!y) return this.setDraft({ fu: null }); const n = Math.round((new Date(y, m - 1, dd) - this.day(0)) / 864e5); this.setDraft({ fu: n > 0 ? n : null }); },
+      toggleOpp: () => this.setDraft({ opp: !d.opp }), onOppDesc: e => this.setDraft({ oppDesc: e.target.value }),
+      barHint, oppTrack: track(d.opp), oppKnob: knob(d.opp),
+      rmOn: !!d.rm, rmTrack: track(!!d.rm), rmKnob: knob(!!d.rm), toggleRm: () => this.setDraft({ rm: d.rm ? null : 'remove' }),
+      quoteTrack: track(d.quote), quoteKnob: knob(d.quote), toggleQuote: () => this.setDraft({ quote: !d.quote }),
+      quoteDesc: `Records a quote issued. ${co ? co.q : 0} recorded so far. No dollar amounts.`,
+      toggleActs: () => this.setState({ showAll: !s.showAll }), actsLabel: s.showAll ? 'Show less' : `Show more (${co ? co.acts.length - 1 : 0})`, actsIcon: s.showAll ? 'ph-caret-up' : 'ph-caret-down',
+      pName: this.pField('name'), pTitle: this.pField('title'), pPhone: this.pField('phone'), pEmail: this.pField('email'), pNotes: this.pField('notes'),
+      confirmManual: () => this.confirmManualPdm(), removePdm: () => this.removePdm(),
+      oppBg: d.opp ? 'var(--color-accent-2-700)' : 'var(--color-surface)', oppFg: d.opp ? 'var(--color-bg)' : 'var(--color-text)',
+      oppIcon: d.opp ? 'ph-check-square' : 'ph-square', oppSub: d.opp ? 'Will leave the cold queue on save' : 'Removes it from cold outreach. No stages or approval.',
+      addQuote: () => this.addQuote(),
+      onCall: e => { e.preventDefault(); this.setState({ toast: `Calling ${co?.p}… Record an outcome below when you hang up.` }); },
+      backToQueue: () => this.setState({ screen: s.screen === 'contacts' ? 'queue' : this.backScreen() }),
+      alreadyContacted: () => this.touch('touch'), snooze: () => this.touch('snooze'),
+      editPdm: () => this.setState({ manual: { name: co.pdm.name, title: co.pdm.title || '', phone: co.pdm.phone || '', email: co.pdm.email || '', notes: co.pdm.notes || '' } }),
+      newPdm: () => this.newPdmInline(),
+      showManual: !!s.manual, manual: s.manual || {}, manualInvalid: !(s.manual && s.manual.name.trim()),
+      mName: mset('name'), mTitle: mset('title'), mPhone: mset('phone'), mEmail: mset('email'), mNotes: mset('notes'),
+      closeManual: () => this.setState({ manual: null }), saveManual: () => this.saveManualPdm(),
+      rmRemove: d.rm === 'remove', rmDnc: d.rm === 'dnc',
+      setRmRemove: () => this.setDraft({ rm: 'remove' }), setRmDnc: () => this.setDraft({ rm: 'dnc' }),
+      openRemove: () => this.setState({ rm: 'remove' }), closeRemove: () => this.setState({ rm: null }), confirmRemove: () => this.confirmRemove(),
+      leftLabel, rightLabel, onLeft, onRight, rightDisabled, saving: s.saving,
+      hasToast: !!s.toast, toast: s.toast, toastBottom: s.screen === 'detail' ? '96px' : '40px',
+      splitTop: target - Math.round(target * 0.3), splitNew: Math.round(target * 0.3),
+      jumpEmail: () => this.setState({ screen: 'email' }), jumpQueue: () => this.goQueue(),
+      jumpDetail: () => { const q = s.queue.find(q => q.status === 'open') || s.queue[0]; this.open(q.id, 'queue'); },
+      reset: () => this.setState(this.initState()),
+    };
+  }
+}
+</script>
+</body>
+</html>
