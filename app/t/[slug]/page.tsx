@@ -11,7 +11,7 @@ export default async function TenantHome({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const distributor = data.getDistributorBySlug(slug);
+  const distributor = await data.getDistributorBySlug(slug);
 
   if (!distributor) {
     notFound();
