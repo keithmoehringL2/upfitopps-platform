@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { company, distributor, interaction, session, user } from "./schema";
 import type { AuthContext } from "../auth/context";
@@ -54,6 +54,11 @@ function todayISO(): string {
 }
 function addDaysISO(days: number): string {
   const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function addDaysFromISO(dateISO: string, days: number): string {
+  const d = new Date(dateISO + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
@@ -125,6 +130,9 @@ export const data = {
           eq(company.ownerUserId, ctx.userId),
           eq(company.lifecycleState, "cold"), // opportunities leave the cold queue
           isNull(company.suppressed),
+          // Companies with an explicit follow-up pending are handled by the
+          // Follow-up Reminders flow, not the routine cold queue.
+          isNull(company.followUpDate),
         ),
       )
       .orderBy(
@@ -132,6 +140,116 @@ export const data = {
         sql`${company.priorityScore} desc nulls last`,
         company.name,
       );
+  },
+
+  /**
+   * Follow-up reminders for a rep: explicit follow-ups they set (due today or
+   * overdue, plus a dated "upcoming" list) and customer touch-base reminders.
+   * These are separate from the cold queue and never count toward the daily
+   * goal. Reps only; scoped to companies they own.
+   */
+  async listFollowUps(ctx: AuthContext) {
+    const distributorId = requireDistributorScope(ctx);
+    if (ctx.role !== "rep") {
+      throw new ForbiddenError("listFollowUps is for reps");
+    }
+    const db = getDb();
+    const today = todayISO();
+
+    const cols = {
+      id: company.id,
+      name: company.name,
+      city: company.city,
+      industryPrimary: company.industryPrimary,
+      priorityScore: company.priorityScore,
+      lastTouchDate: company.lastTouchDate,
+      followUpDate: company.followUpDate,
+      followUpNote: company.followUpNote,
+      touchIntervalDays: company.touchIntervalDays,
+      lifecycleState: company.lifecycleState,
+    };
+
+    const base = and(
+      eq(company.distributorId, distributorId),
+      eq(company.ownerUserId, ctx.userId),
+      isNull(company.suppressed),
+    );
+
+    const [explicit, customers] = await Promise.all([
+      db
+        .select(cols)
+        .from(company)
+        .where(and(base, isNotNull(company.followUpDate)))
+        .orderBy(company.followUpDate),
+      db
+        .select(cols)
+        .from(company)
+        .where(
+          and(
+            base,
+            eq(company.lifecycleState, "customer"),
+            isNotNull(company.touchIntervalDays),
+          ),
+        ),
+    ]);
+
+    type Reminder = {
+      id: string;
+      name: string;
+      city: string | null;
+      industryPrimary: string | null;
+      priorityScore: string | null;
+      lastTouchDate: string | null;
+      dueDate: string;
+      note: string | null;
+      kind: "follow_up" | "touch_base";
+    };
+
+    const due: Reminder[] = [];
+    const upcoming: Reminder[] = [];
+
+    for (const c of explicit) {
+      const dueDate = c.followUpDate as string;
+      const row: Reminder = {
+        id: c.id,
+        name: c.name,
+        city: c.city,
+        industryPrimary: c.industryPrimary,
+        priorityScore: c.priorityScore,
+        lastTouchDate: c.lastTouchDate,
+        dueDate,
+        note: c.followUpNote,
+        kind: "follow_up",
+      };
+      if (dueDate <= today) due.push(row);
+      else upcoming.push(row);
+    }
+
+    // Customer touch-base: due when the interval has elapsed since last touch
+    // (or there has never been one).
+    for (const c of customers) {
+      const interval = c.touchIntervalDays as number;
+      const nextTouch = c.lastTouchDate
+        ? addDaysFromISO(c.lastTouchDate, interval)
+        : today;
+      if (nextTouch <= today) {
+        due.push({
+          id: c.id,
+          name: c.name,
+          city: c.city,
+          industryPrimary: c.industryPrimary,
+          priorityScore: c.priorityScore,
+          lastTouchDate: c.lastTouchDate,
+          dueDate: nextTouch,
+          note: `Customer check-in every ${interval} days`,
+          kind: "touch_base",
+        });
+      }
+    }
+
+    due.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    upcoming.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return { due, upcoming };
   },
 
   /** One company, only if it is inside the caller's scope (rep: owned). */
@@ -254,6 +372,15 @@ export const data = {
     const patch: Partial<typeof company.$inferInsert> = {
       lastTouchDate: todayISO(),
       nextEligibleDate,
+      // An explicit follow-up moves the company out of the routine cold queue
+      // and into Follow-up Reminders. Logging without choosing one clears any
+      // prior reminder, so acting on a reminder resolves it.
+      followUpDate: input.remove == null && input.followUpDays != null
+        ? addDaysISO(input.followUpDays)
+        : null,
+      followUpNote: input.remove == null && input.followUpDays != null
+        ? note || null
+        : null,
       updatedAt: new Date(),
     };
     if (input.opportunity) patch.lifecycleState = "opp";

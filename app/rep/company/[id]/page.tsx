@@ -72,7 +72,7 @@ export default async function RepCompanyPage({
         color: "var(--text)",
       }}
     >
-      <div style={{ padding: "16px 20px 36px", display: "flex", flexDirection: "column", gap: 32 }}>
+      <div style={{ padding: "16px 20px calc(96px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 32 }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Link href="/rep" className="btn btn-ghost" style={{ fontSize: 15, paddingLeft: 0, minHeight: 44 }}>

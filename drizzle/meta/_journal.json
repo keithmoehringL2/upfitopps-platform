@@ -36,6 +36,13 @@
       "when": 1795193098324,
       "tag": "0004_shallow_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795199581953,
+      "tag": "0005_new_pandemic",
+      "breakpoints": true
     }
   ]
 }

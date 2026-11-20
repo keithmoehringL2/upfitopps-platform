@@ -4,17 +4,19 @@ import { data } from "@/lib/db/gateway";
 import { repLogout } from "@/lib/rep/actions";
 import { brandRampVars } from "@/lib/brand/ramp";
 import { ZipSearch } from "./zip-search";
+import { FollowUps } from "./follow-ups";
 
 // Rep work queue, rebuilt to the design handoff's Rep Mobile prototype:
 // branded sticky header + icon nav, the attempts/target hero with a segmented
 // progress bar and Start, then the ranked Cold Prospects list.
 export default async function RepQueuePage() {
   const ctx = await requireRep();
-  const [queue, progress, distributor, user] = await Promise.all([
+  const [queue, progress, distributor, user, followUps] = await Promise.all([
     data.listRepQueue(ctx),
     data.getRepDayProgress(ctx),
     data.getDistributorById(ctx.distributorId!),
     getCurrentUser(),
+    data.listFollowUps(ctx),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -31,7 +33,7 @@ export default async function RepQueuePage() {
 
   const nav: { icon: string; label: string; href?: string; current?: boolean }[] = [
     { icon: "ph-target", label: "Prospects", href: "/rep", current: true },
-    { icon: "ph-bell-ringing", label: "Follow-ups" },
+    { icon: "ph-bell-ringing", label: "Follow-ups", href: "/rep#followups" },
     { icon: "ph-map-pin", label: "ZIP", href: "/rep#zip" },
     { icon: "ph-address-book", label: "Contacts", href: "/rep/contacts" },
     { icon: "ph-trophy", label: "Leaders", href: "/rep/leaders" },
@@ -211,6 +213,8 @@ export default async function RepQueuePage() {
             </p>
           )}
         </section>
+
+        <FollowUps due={followUps.due} upcoming={followUps.upcoming} />
 
         <ZipSearch apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY} />
       </div>

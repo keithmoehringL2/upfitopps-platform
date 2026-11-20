@@ -228,6 +228,12 @@ export const company = pgTable(
     nextEligibleDate: date("next_eligible_date"),
     touchIntervalDays: integer("touch_interval_days"),
     lastTouchDate: date("last_touch_date"),
+    // Explicit, rep-chosen follow-up — distinct from the cadence-driven
+    // next-eligible date. When set, the company leaves the routine cold queue
+    // and appears in Follow-up Reminders (due when the date arrives); the note
+    // is shown italicized on the reminder row.
+    followUpDate: date("follow_up_date"),
+    followUpNote: text("follow_up_note"),
     ownerUserId: uuid("owner_user_id").references(() => user.id),
 
     // Confirmed primary decision-maker (jsonb: name/title/phone/email/notes) and

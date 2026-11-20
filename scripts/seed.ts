@@ -193,7 +193,10 @@ async function main() {
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
         lastTouchDate: daysFromNow(-9),
-        nextEligibleDate: daysFromNow(5), // not yet due
+        nextEligibleDate: daysFromNow(5),
+        // Explicit follow-up that is overdue — shows in Follow-up Reminders.
+        followUpDate: daysFromNow(-2),
+        followUpNote: "Owner asked me to call back after their busy season.",
       },
       {
         id: ID.co7,
@@ -216,6 +219,9 @@ async function main() {
         priorityExplanation: "Strong fleet size and territory match.",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
+        // Explicit follow-up a few days out — shows under Upcoming.
+        followUpDate: daysFromNow(3),
+        followUpNote: "Decision-maker is travelling; reconnect next week.",
       },
     ])
     // Upsert so re-seeding refreshes fixtures (and resets cadence/lifecycle
@@ -246,6 +252,8 @@ async function main() {
         sourceProgramId: sql`excluded.source_program_id`,
         lastTouchDate: sql`excluded.last_touch_date`,
         nextEligibleDate: sql`excluded.next_eligible_date`,
+        followUpDate: sql`excluded.follow_up_date`,
+        followUpNote: sql`excluded.follow_up_note`,
         lifecycleState: sql`excluded.lifecycle_state`,
         suppressed: sql`excluded.suppressed`,
         updatedAt: new Date(),

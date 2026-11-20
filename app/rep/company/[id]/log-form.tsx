@@ -186,18 +186,24 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
         <p style={{ color: "var(--accent-700)", fontSize: 14, margin: 0 }}>{state.error}</p>
       )}
 
-      {/* Sticky action bar */}
+      {/* Persistent action bar — pinned to the bottom of the mobile column so
+          it stays put regardless of the Decision-Maker / Quote sections that
+          follow this form in the page. */}
       <div
         style={{
-          position: "sticky",
+          position: "fixed",
           bottom: 0,
-          marginTop: 10,
-          marginInline: -20,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: 480,
+          zIndex: 10,
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "10px 16px calc(10px + env(safe-area-inset-bottom))",
           background: "var(--accent-500)",
+          boxShadow: "0 -1px 0 color-mix(in srgb, var(--text) 12%, transparent)",
         }}
       >
         <a
