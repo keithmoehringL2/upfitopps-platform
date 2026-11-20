@@ -5,7 +5,7 @@ import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import {
   outcomeMeta,
-  type ChannelValue,
+  NOT_INTERESTED_CADENCE_DAYS,
   type OutcomeValue,
 } from "../rep/outcomes";
 
@@ -113,6 +113,7 @@ export const data = {
         and(
           eq(company.distributorId, distributorId),
           eq(company.ownerUserId, ctx.userId),
+          eq(company.lifecycleState, "cold"), // opportunities leave the cold queue
           isNull(company.suppressed),
         ),
       )
@@ -177,9 +178,16 @@ export const data = {
     ctx: AuthContext,
     input: {
       companyId: string;
-      channel: ChannelValue;
       outcome: OutcomeValue;
       note?: string | null;
+      /** Decision-Maker only: "not interested now" uses the longer cadence. */
+      notInterested?: boolean;
+      /** Explicit follow-up in days from today; overrides the outcome cadence. */
+      followUpDays?: number | null;
+      /** Flag an opportunity — the prospect leaves the cold queue. */
+      opportunity?: boolean;
+      /** Remove from outreach (reversible) or mark do-not-contact (permanent). */
+      remove?: "remove" | "dnc" | null;
     },
   ) {
     const distributorId = requireDistributorScope(ctx);
@@ -191,6 +199,12 @@ export const data = {
     const meta = outcomeMeta(input.outcome);
     if (!meta) throw new ForbiddenError(`Unknown outcome ${input.outcome}`);
 
+    // Compose the note the way the prototype does (prefix special cases).
+    let note = input.note?.trim() || "";
+    if (input.outcome === "decision_maker" && input.notInterested) {
+      note = `Not interested now. ${note}`.trim();
+    }
+
     const db = getDb();
     const [row] = await db
       .insert(interaction)
@@ -198,20 +212,34 @@ export const data = {
         distributorId,
         companyId: input.companyId,
         repUserId: ctx.userId,
-        channel: input.channel,
+        channel: "call",
         outcome: input.outcome,
-        note: input.note?.trim() || null,
+        note: note || null,
       })
       .returning({ id: interaction.id });
 
-    // Apply cadence + lifecycle side-effects.
+    // Resolve the next-eligible date: explicit follow-up wins; else cadence
+    // (Decision-Maker + not-interested uses the longer setting); Wrong Number
+    // has no follow-up and is parked far out until the number is corrected.
+    const cadence =
+      input.outcome === "decision_maker" && input.notInterested
+        ? NOT_INTERESTED_CADENCE_DAYS
+        : meta.cadenceDays;
+    const nextEligibleDate = input.remove
+      ? null
+      : input.followUpDays != null
+        ? addDaysISO(input.followUpDays)
+        : cadence == null
+          ? addDaysISO(3650)
+          : addDaysISO(cadence);
+
     const patch: Partial<typeof company.$inferInsert> = {
       lastTouchDate: todayISO(),
-      nextEligibleDate: meta.suppress ? null : addDaysISO(meta.nextDays ?? 7),
+      nextEligibleDate,
       updatedAt: new Date(),
     };
-    if (meta.lifecycle) patch.lifecycleState = meta.lifecycle;
-    if (meta.suppress) patch.suppressed = meta.suppress;
+    if (input.opportunity) patch.lifecycleState = "opp";
+    if (input.remove) patch.suppressed = input.remove;
 
     await db.update(company).set(patch).where(eq(company.id, input.companyId));
 

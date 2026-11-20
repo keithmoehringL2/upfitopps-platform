@@ -15,6 +15,13 @@
       "when": 1795183029354,
       "tag": "0001_tired_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795184545406,
+      "tag": "0002_dapper_maggott",
+      "breakpoints": true
     }
   ]
 }

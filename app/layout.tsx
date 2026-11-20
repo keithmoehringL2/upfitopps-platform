@@ -27,6 +27,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap"
           rel="stylesheet"
         />
+        {/* Phosphor duotone icons — the icon set used across the design handoff. */}
+        <link
+          href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css"
+          rel="stylesheet"
+        />
       </head>
       <body>{children}</body>
     </html>

@@ -1,6 +1,6 @@
 // Seed the database with dev fixtures. Idempotent (fixed UUIDs + onConflict).
 // Run: set -a; . ./.env.local; set +a; npx tsx scripts/seed.ts
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { getDb } from "../lib/db/client";
 import {
   company,
@@ -80,10 +80,20 @@ async function main() {
         distributorId: ID.distTruck,
         externalImportId: "TC-001",
         name: "Northside Plumbing",
+        address: "4100 N Lamar Blvd",
         city: "Austin",
+        state: "TX",
         zip: "78701",
+        phone: "(512) 555-0131",
+        website: "northsideplumbing.com",
         industryPrimary: "Plumbing",
+        description: "Residential + light-commercial plumbing with a growing service-van fleet.",
+        totalVehicles: 18,
+        truckCount: 6,
+        vanCount: 12,
+        fleetMix: "Ford Transit ×12 · F-250 ×6",
         priorityScore: "4.6",
+        priorityExplanation: "Large van fleet, strong upfit fit.",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
       },
@@ -125,6 +135,9 @@ async function main() {
         industryPrimary: "Electrical",
         description: "Mid-size electrical contractor running a mixed van fleet; expanding crews this year.",
         totalVehicles: 14,
+        truckCount: 4,
+        vanCount: 10,
+        fleetMix: "Ford Transit ×10 · F-250 ×4",
         priorityScore: "4.2",
         priorityExplanation: "Large fleet, high upfit fit, no recent contact.",
         ownerUserId: ID.rep1,
@@ -142,6 +155,9 @@ async function main() {
         phone: "(512) 555-0188",
         industryPrimary: "Landscaping",
         totalVehicles: 9,
+        truckCount: 6,
+        vanCount: 3,
+        fleetMix: "F-250 ×6 · Transit ×3",
         priorityScore: "3.1",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
@@ -160,6 +176,9 @@ async function main() {
         phone: "(512) 555-0166",
         industryPrimary: "Roofing",
         totalVehicles: 6,
+        truckCount: 4,
+        vanCount: 2,
+        fleetMix: "F-350 ×4 · Transit ×2",
         priorityScore: "2.4",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
@@ -178,13 +197,45 @@ async function main() {
         phone: "(512) 555-0109",
         industryPrimary: "Pest Control",
         totalVehicles: 11,
+        truckCount: 2,
+        vanCount: 9,
+        fleetMix: "Transit Connect ×9 · F-150 ×2",
         priorityScore: "3.6",
         priorityExplanation: "Strong fleet size and territory match.",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
       },
     ])
-    .onConflictDoNothing();
+    // Upsert so re-seeding refreshes fixtures (and resets cadence/lifecycle
+    // state that manual testing may have changed).
+    .onConflictDoUpdate({
+      target: [company.distributorId, company.externalImportId],
+      set: {
+        name: sql`excluded.name`,
+        address: sql`excluded.address`,
+        city: sql`excluded.city`,
+        state: sql`excluded.state`,
+        zip: sql`excluded.zip`,
+        phone: sql`excluded.phone`,
+        website: sql`excluded.website`,
+        industryPrimary: sql`excluded.industry_primary`,
+        industrySub: sql`excluded.industry_sub`,
+        description: sql`excluded.description`,
+        totalVehicles: sql`excluded.total_vehicles`,
+        truckCount: sql`excluded.truck_count`,
+        vanCount: sql`excluded.van_count`,
+        fleetMix: sql`excluded.fleet_mix`,
+        priorityScore: sql`excluded.priority_score`,
+        priorityExplanation: sql`excluded.priority_explanation`,
+        ownerUserId: sql`excluded.owner_user_id`,
+        sourceProgramId: sql`excluded.source_program_id`,
+        lastTouchDate: sql`excluded.last_touch_date`,
+        nextEligibleDate: sql`excluded.next_eligible_date`,
+        lifecycleState: sql`excluded.lifecycle_state`,
+        suppressed: sql`excluded.suppressed`,
+        updatedAt: new Date(),
+      },
+    });
 
   // Set the demo manager's password (update so re-seeding refreshes it even
   // though the user row already exists via onConflictDoNothing).
@@ -197,31 +248,43 @@ async function main() {
   await db.update(user).set({ dailyTarget: 8 }).where(eq(user.id, ID.rep1));
 
   // A little history on Northside Plumbing so the detail view isn't empty.
+  const northsideActivity = [
+    {
+      id: ID.int1,
+      distributorId: ID.distTruck,
+      companyId: ID.co1,
+      repUserId: ID.rep1,
+      channel: "call" as const,
+      outcome: "decision_maker" as const,
+      note: "Spoke with the owner — interested in van shelving for 3 trucks. Sending info.",
+      createdAt: dateDaysAgo(6),
+    },
+    {
+      id: ID.int2,
+      distributorId: ID.distTruck,
+      companyId: ID.co1,
+      repUserId: ID.rep1,
+      channel: "call" as const,
+      outcome: "voicemail" as const,
+      note: "Left a voicemail following up on the shelving quote.",
+      createdAt: dateDaysAgo(2),
+    },
+  ];
   await db
     .insert(interaction)
-    .values([
-      {
-        id: ID.int1,
-        distributorId: ID.distTruck,
-        companyId: ID.co1,
-        repUserId: ID.rep1,
-        channel: "call",
-        outcome: "connected",
-        note: "Spoke with the owner — interested in van shelving for 3 trucks. Sending info.",
-        createdAt: dateDaysAgo(6),
-      },
-      {
-        id: ID.int2,
-        distributorId: ID.distTruck,
-        companyId: ID.co1,
-        repUserId: ID.rep1,
-        channel: "call",
-        outcome: "left_message",
-        note: "Left a voicemail following up on the shelving quote.",
-        createdAt: dateDaysAgo(2),
-      },
-    ])
-    .onConflictDoNothing();
+    .values(northsideActivity)
+    .onConflictDoUpdate({
+      target: interaction.id,
+      set: { outcome: sql`excluded.outcome`, note: sql`excluded.note`, createdAt: sql`excluded.created_at` },
+    });
+
+  // Drop any ad-hoc interactions left on the demo company from manual testing,
+  // so the seeded history stays clean and uses the canonical outcome set.
+  await db
+    .delete(interaction)
+    .where(
+      and(eq(interaction.companyId, ID.co1), notInArray(interaction.id, [ID.int1, ID.int2])),
+    );
 
   console.log("✓ seed complete");
   console.log(`  demo manager: manager@truckcolors.test / ${DEMO_MANAGER_PASSWORD}`);

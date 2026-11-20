@@ -9,7 +9,7 @@ import { createRepLoginToken } from "@/lib/auth/rep-token";
 import { deleteSession } from "@/lib/auth/session";
 import { getAuthContext } from "@/lib/auth/dal";
 import { data } from "@/lib/db/gateway";
-import { isChannel, isOutcome } from "@/lib/rep/outcomes";
+import { isOutcome } from "@/lib/rep/outcomes";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -71,16 +71,29 @@ export async function logOutcome(
 
   const companyId = String(formData.get("companyId") ?? "");
   const outcome = String(formData.get("outcome") ?? "");
-  const channelRaw = String(formData.get("channel") ?? "call");
   const note = String(formData.get("note") ?? "");
+  const notInterested = formData.get("notInterested") === "1";
+  const opportunity = formData.get("opportunity") === "1";
+  const removeRaw = String(formData.get("remove") ?? "");
+  const remove =
+    removeRaw === "remove" || removeRaw === "dnc" ? removeRaw : null;
+  const fuRaw = String(formData.get("followUpDays") ?? "");
+  const followUpDays = fuRaw && Number.isFinite(Number(fuRaw)) ? Number(fuRaw) : null;
 
   if (!companyId || !isOutcome(outcome)) {
     return { error: "Pick an outcome." };
   }
-  const channel = isChannel(channelRaw) ? channelRaw : "call";
 
   try {
-    await data.logInteraction(ctx, { companyId, outcome, channel, note });
+    await data.logInteraction(ctx, {
+      companyId,
+      outcome,
+      note,
+      notInterested,
+      followUpDays,
+      opportunity,
+      remove,
+    });
   } catch {
     return {
       error: "Could not log that — the prospect may not be in your queue.",

@@ -66,6 +66,7 @@ export const interactionChannelEnum = pgEnum("interaction_channel", [
 ]);
 
 export const interactionOutcomeEnum = pgEnum("interaction_outcome", [
+  // Original placeholder set (kept so the enum change is purely additive).
   "connected",
   "left_message",
   "no_answer",
@@ -74,6 +75,11 @@ export const interactionOutcomeEnum = pgEnum("interaction_outcome", [
   "not_interested",
   "do_not_contact",
   "bad_contact",
+  // Canonical call outcomes from the design handoff (see lib/rep/outcomes.ts).
+  "voicemail",
+  "gatekeeper",
+  "decision_maker",
+  "wrong_number",
 ]);
 
 // ---------------------------------------------------------------------------
