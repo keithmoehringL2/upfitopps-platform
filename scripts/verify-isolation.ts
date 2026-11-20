@@ -30,18 +30,26 @@ async function main() {
   // Manager sees every company in their distributor — and only theirs.
   const mgr = ctx({ userId: ID.mgrTruck, role: "manager", distributorId: ID.distTruck });
   const mgrCompanies = await data.listCompanies(mgr);
-  check("manager sees both truckcolors companies", mgrCompanies.length === 2);
+  const mgrIds = new Set(mgrCompanies.map((c) => c.id));
+  check(
+    "manager sees every truckcolors company (incl. co1 & co2)",
+    mgrIds.has(ID.co1) && mgrIds.has(ID.co2) && mgrCompanies.length >= 2,
+  );
   check(
     "manager sees nothing outside their distributor",
     mgrCompanies.every((c) => c.distributorId === ID.distTruck),
   );
 
-  // Rep sees only companies they own.
+  // Rep sees only companies they own — not even unowned ones in their tenant.
   const rep = ctx({ userId: ID.rep1, role: "rep", distributorId: ID.distTruck });
   const repCompanies = await data.listCompanies(rep);
   check(
-    "rep sees only their own company",
-    repCompanies.length === 1 && repCompanies[0].ownerUserId === ID.rep1,
+    "rep sees only companies they own",
+    repCompanies.length > 0 && repCompanies.every((c) => c.ownerUserId === ID.rep1),
+  );
+  check(
+    "rep does NOT see an unowned company in their tenant (co2)",
+    !repCompanies.some((c) => c.id === ID.co2),
   );
 
   // Cross-tenant: a manager scoped to demo cannot see truckcolors data.

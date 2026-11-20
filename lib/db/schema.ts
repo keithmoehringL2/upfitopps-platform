@@ -55,6 +55,27 @@ export const verifyPurposeEnum = pgEnum("verify_purpose", [
   "password_reset",
 ]);
 
+// How a rep touched a prospect, and what came of it. Outcomes drive the cadence
+// engine (next-eligible date) and some lifecycle/suppression transitions; see
+// lib/rep/outcomes.ts.
+export const interactionChannelEnum = pgEnum("interaction_channel", [
+  "call",
+  "email",
+  "text",
+  "visit",
+]);
+
+export const interactionOutcomeEnum = pgEnum("interaction_outcome", [
+  "connected",
+  "left_message",
+  "no_answer",
+  "callback",
+  "meeting_set",
+  "not_interested",
+  "do_not_contact",
+  "bad_contact",
+]);
+
 // ---------------------------------------------------------------------------
 // Tenancy
 // ---------------------------------------------------------------------------
@@ -213,6 +234,34 @@ export const company = pgTable(
     index("company_distributor_idx").on(t.distributorId),
     index("company_owner_idx").on(t.ownerUserId),
     index("company_zip_idx").on(t.distributorId, t.zip),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Interactions (logged rep activity)
+// ---------------------------------------------------------------------------
+export const interaction = pgTable(
+  "interaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    distributorId: uuid("distributor_id")
+      .notNull()
+      .references(() => distributor.id),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id),
+    repUserId: uuid("rep_user_id")
+      .notNull()
+      .references(() => user.id),
+    channel: interactionChannelEnum("channel").notNull().default("call"),
+    outcome: interactionOutcomeEnum("outcome").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("interaction_company_idx").on(t.companyId),
+    index("interaction_rep_idx").on(t.repUserId),
+    index("interaction_distributor_created_idx").on(t.distributorId, t.createdAt),
   ],
 );
 
