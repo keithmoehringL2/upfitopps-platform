@@ -92,11 +92,11 @@ export async function buildDailyEmails(opts?: { force?: boolean; now?: Date }): 
       }));
       const fus: DailyEmailFollowUp[] = followUps.due.map((f) => ({
         name: f.name,
-        meta: [f.city, f.kind === "touch_base" ? "Customer" : f.industryPrimary]
-          .filter(Boolean)
-          .join(" · "),
-        dueLabel: dueLabel(f.dueDate, today),
-        note: f.note,
+        kind: f.kind === "touch_base" ? "Customer" : "Follow-up",
+        reason:
+          f.kind === "touch_base"
+            ? f.note ?? "Customer check-in due"
+            : [dueLabel(f.dueDate, today), f.note].filter(Boolean).join(" · "),
         url: link(`/rep/company/${f.id}`),
       }));
 

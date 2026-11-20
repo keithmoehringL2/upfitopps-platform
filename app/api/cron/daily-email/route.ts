@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendDailyEmails } from "@/lib/email/send-daily";
+import { sendManagerSummaries } from "@/lib/email/send-summaries";
 
 // Scheduled daily-email trigger. Vercel Cron calls this on the schedule in
 // vercel.json and (when CRON_SECRET is set) sends it as a Bearer token, so the
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
   }
 
-  const result = await sendDailyEmails();
-  return NextResponse.json(result);
+  const [daily, summaries] = await Promise.all([
+    sendDailyEmails(),
+    sendManagerSummaries(),
+  ]);
+  return NextResponse.json({ daily, summaries });
 }

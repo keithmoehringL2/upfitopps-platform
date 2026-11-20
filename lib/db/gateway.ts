@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { company, distributor, interaction, session, user } from "./schema";
 import type { AuthContext } from "../auth/context";
@@ -849,6 +849,74 @@ export const data = {
       period,
       workingDays,
     };
+  },
+
+  /**
+   * The manager overview plus, when requested, a prior-period comparison of the
+   * two time-bounded activity metrics (attempts and DM conversations) — used by
+   * the manager summary email. The snapshot metrics (opportunities, quoted,
+   * DMs identified) are current-state counts, so they carry no period trend.
+   */
+  async getManagerSummary(
+    ctx: AuthContext,
+    period: "today" | "week" | "month",
+    compareTrend: boolean,
+  ) {
+    const overview = await this.getManagerOverview(ctx, period);
+    if (!compareTrend) return { ...overview, trend: null };
+
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const windowDays = period === "today" ? 1 : period === "week" ? 7 : 30;
+    const now = Date.now();
+    const curStart = new Date(now - windowDays * 86_400_000);
+    const prevStart = new Date(now - 2 * windowDays * 86_400_000);
+    const prevActs = await db
+      .select({ outcome: interaction.outcome })
+      .from(interaction)
+      .where(
+        and(
+          eq(interaction.distributorId, distributorId),
+          gte(interaction.createdAt, prevStart),
+          lt(interaction.createdAt, curStart),
+        ),
+      );
+    const isAttempt = (o: string) =>
+      ["no_answer", "voicemail", "gatekeeper", "decision_maker"].includes(o);
+    const trend = {
+      prevAttempts: prevActs.filter((a) => isAttempt(a.outcome)).length,
+      prevDm: prevActs.filter((a) => a.outcome === "decision_maker").length,
+    };
+    return { ...overview, trend };
+  },
+
+  /**
+   * System/scheduled-job read (no AuthContext): active distributors, their
+   * summary settings, and their active managers — for the manager summary
+   * email. Like listDailyEmailRoster, deliberately cross-tenant for the cron.
+   */
+  async listManagerSummaryRoster() {
+    const db = getDb();
+    const [dists, managers] = await Promise.all([
+      db
+        .select({
+          id: distributor.id,
+          slug: distributor.slug,
+          name: distributor.name,
+          primaryColor: distributor.primaryColor,
+          settings: distributor.settings,
+        })
+        .from(distributor)
+        .where(eq(distributor.status, "active")),
+      db
+        .select({ id: user.id, email: user.email, distributorId: user.distributorId })
+        .from(user)
+        .where(and(eq(user.role, "manager"), eq(user.status, "active"))),
+    ]);
+    return dists.map((ds) => ({
+      ...ds,
+      managers: managers.filter((m) => m.distributorId === ds.id),
+    }));
   },
 
   /** Reps (any status) with company counts and last-active timestamp. */
