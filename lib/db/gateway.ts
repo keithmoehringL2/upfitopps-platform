@@ -1,13 +1,23 @@
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "./client";
-import { company, distributor, interaction, user } from "./schema";
+import { company, distributor, interaction, session, user } from "./schema";
 import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
+import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
+import type { CompanyImport } from "../import/csv";
 import {
-  outcomeMeta,
-  NOT_INTERESTED_CADENCE_DAYS,
-  type OutcomeValue,
-} from "../rep/outcomes";
+  mergeSettings,
+  type CadenceKey,
+  type ManagerSettings,
+} from "../manager/settings";
+
+function requireManager(ctx: AuthContext): string {
+  const distributorId = requireDistributorScope(ctx);
+  if (ctx.role !== "manager") {
+    throw new ForbiddenError("Managers only");
+  }
+  return distributorId;
+}
 
 /**
  * The ONLY sanctioned way to read or mutate tenant data.
@@ -218,13 +228,21 @@ export const data = {
       })
       .returning({ id: interaction.id });
 
-    // Resolve the next-eligible date: explicit follow-up wins; else cadence
-    // (Decision-Maker + not-interested uses the longer setting); Wrong Number
-    // has no follow-up and is parked far out until the number is corrected.
-    const cadence =
+    // Resolve the next-eligible date: explicit follow-up wins; else the
+    // distributor's configured cadence for this outcome (Decision-Maker +
+    // not-interested uses the not-interested setting). A null cadence means no
+    // follow-up — the prospect is parked far out.
+    const [distRow] = await db
+      .select({ settings: distributor.settings })
+      .from(distributor)
+      .where(eq(distributor.id, distributorId))
+      .limit(1);
+    const cadences = mergeSettings(distRow?.settings).cadence;
+    const cadKey: CadenceKey =
       input.outcome === "decision_maker" && input.notInterested
-        ? NOT_INTERESTED_CADENCE_DAYS
-        : meta.cadenceDays;
+        ? "not_interested"
+        : (input.outcome as CadenceKey);
+    const cadence = cadences[cadKey] ?? null;
     const nextEligibleDate = input.remove
       ? null
       : input.followUpDays != null
@@ -265,5 +283,391 @@ export const data = {
       .where(eq(user.id, ctx.userId))
       .limit(1);
     return { worked: worked ?? 0, target: u?.target ?? null };
+  },
+
+  // ───────────────────────── Manager: reps, assignment, import ─────────────
+
+  /** Active reps in the manager's distributor (for the assignment picker). */
+  async listReps(ctx: AuthContext) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    return db
+      .select({ id: user.id, email: user.email, dailyTarget: user.dailyTarget })
+      .from(user)
+      .where(
+        and(
+          eq(user.distributorId, distributorId),
+          eq(user.role, "rep"),
+          eq(user.status, "active"),
+        ),
+      )
+      .orderBy(user.email);
+  },
+
+  /**
+   * Assign (or, with ownerUserId null, unassign) companies to a rep. Scoped to
+   * the manager's distributor; the target must be a rep in that distributor.
+   * Returns the number of companies changed.
+   */
+  async assignCompanies(
+    ctx: AuthContext,
+    companyIds: string[],
+    ownerUserId: string | null,
+  ) {
+    const distributorId = requireManager(ctx);
+    if (companyIds.length === 0) return 0;
+    const db = getDb();
+
+    if (ownerUserId) {
+      const [rep] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(
+          and(
+            eq(user.id, ownerUserId),
+            eq(user.distributorId, distributorId),
+            eq(user.role, "rep"),
+          ),
+        )
+        .limit(1);
+      if (!rep) throw new ForbiddenError("Target is not a rep in your distributor");
+    }
+
+    const changed = await db
+      .update(company)
+      .set({ ownerUserId: ownerUserId ?? null, updatedAt: new Date() })
+      .where(
+        and(
+          eq(company.distributorId, distributorId),
+          inArray(company.id, companyIds),
+        ),
+      )
+      .returning({ id: company.id });
+    return changed.length;
+  },
+
+  /**
+   * Upsert imported companies into the manager's distributor, deduped on
+   * external_import_id. Updates only descriptive fields — a rep's owner,
+   * lifecycle, suppression and cadence are preserved on re-import.
+   */
+  async importCompanies(ctx: AuthContext, companies: CompanyImport[]) {
+    const distributorId = requireManager(ctx);
+    if (companies.length === 0) return { inserted: 0, updated: 0 };
+    const db = getDb();
+
+    const ids = companies.map((c) => c.externalImportId);
+    const existingRows = await db
+      .select({ ext: company.externalImportId })
+      .from(company)
+      .where(
+        and(
+          eq(company.distributorId, distributorId),
+          inArray(company.externalImportId, ids),
+        ),
+      );
+    const existing = new Set(existingRows.map((r) => r.ext));
+
+    await db
+      .insert(company)
+      .values(companies.map((c) => ({ distributorId, ...c })))
+      .onConflictDoUpdate({
+        target: [company.distributorId, company.externalImportId],
+        set: {
+          name: sql`excluded.name`,
+          address: sql`excluded.address`,
+          city: sql`excluded.city`,
+          state: sql`excluded.state`,
+          zip: sql`excluded.zip`,
+          phone: sql`excluded.phone`,
+          website: sql`excluded.website`,
+          industryPrimary: sql`excluded.industry_primary`,
+          industrySub: sql`excluded.industry_sub`,
+          description: sql`excluded.description`,
+          totalVehicles: sql`excluded.total_vehicles`,
+          truckCount: sql`excluded.truck_count`,
+          vanCount: sql`excluded.van_count`,
+          fleetMix: sql`excluded.fleet_mix`,
+          priorityScore: sql`excluded.priority_score`,
+          priorityExplanation: sql`excluded.priority_explanation`,
+          updatedAt: new Date(),
+        },
+      });
+
+    const updated = companies.filter((c) => existing.has(c.externalImportId)).length;
+    return { inserted: companies.length - updated, updated };
+  },
+
+  // ───────────────────────── Manager: overview, team, settings ─────────────
+
+  /** Lead funnel + team/per-rep performance for the manager Overview. */
+  async getManagerOverview(ctx: AuthContext, period: "today" | "week" | "month") {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const workingDays = { today: 1, week: 5, month: 22 }[period];
+    const since =
+      period === "today"
+        ? startOfTodayUTC()
+        : new Date(Date.now() - (period === "week" ? 7 : 30) * 86_400_000);
+
+    const [companies, acts, reps] = await Promise.all([
+      db
+        .select({
+          id: company.id,
+          ownerUserId: company.ownerUserId,
+          lifecycleState: company.lifecycleState,
+        })
+        .from(company)
+        .where(eq(company.distributorId, distributorId)),
+      db
+        .select({
+          companyId: interaction.companyId,
+          repUserId: interaction.repUserId,
+          outcome: interaction.outcome,
+          createdAt: interaction.createdAt,
+        })
+        .from(interaction)
+        .where(eq(interaction.distributorId, distributorId)),
+      this.listReps(ctx),
+    ]);
+
+    const isAttempt = (o: string) =>
+      ["no_answer", "voicemail", "gatekeeper", "decision_maker"].includes(o);
+    const isContact = (o: string) => ["gatekeeper", "decision_maker"].includes(o);
+    const byCompany = new Map<string, typeof acts>();
+    for (const a of acts) {
+      const arr = byCompany.get(a.companyId) ?? [];
+      arr.push(a);
+      byCompany.set(a.companyId, arr);
+    }
+
+    const pool = companies.filter((c) => c.lifecycleState !== "customer");
+    const poolTotal = pool.length;
+    const unassigned = pool.filter((c) => !c.ownerUserId).length;
+    const attempted = pool.filter((c) =>
+      (byCompany.get(c.id) ?? []).some((a) => isAttempt(a.outcome)),
+    ).length;
+    const contacted = pool.filter((c) =>
+      (byCompany.get(c.id) ?? []).some((a) => isContact(a.outcome)),
+    ).length;
+    const opportunities = pool.filter((c) => c.lifecycleState === "opp").length;
+
+    const periodActs = acts.filter((a) => a.createdAt >= since);
+    const perRep = reps.map((r) => {
+      const ra = periodActs.filter((a) => a.repUserId === r.id);
+      const attempts = ra.filter((a) => isAttempt(a.outcome)).length;
+      const dm = ra.filter((a) => a.outcome === "decision_maker").length;
+      const opp = companies.filter(
+        (c) => c.ownerUserId === r.id && c.lifecycleState === "opp",
+      ).length;
+      const target = r.dailyTarget ?? 0;
+      const denom = target * workingDays;
+      return {
+        id: r.id,
+        email: r.email,
+        target,
+        goal: target * workingDays,
+        attempts,
+        // Decision-makers identified and quotes are not captured yet (pending the
+        // decision-maker + quote features); surfaced as 0 to match the design.
+        pdm: 0,
+        dm,
+        opportunities: opp,
+        quoted: 0,
+        attainment: denom ? Math.round((attempts / denom) * 100) : null,
+        oppYield: dm ? Math.round((opp / dm) * 100) : null,
+      };
+    });
+    const team = {
+      target: perRep.reduce((t, r) => t + r.target, 0),
+      attempts: perRep.reduce((t, r) => t + r.attempts, 0),
+      pdm: perRep.reduce((t, r) => t + r.pdm, 0),
+      dm: perRep.reduce((t, r) => t + r.dm, 0),
+      opportunities: perRep.reduce((t, r) => t + r.opportunities, 0),
+      quoted: perRep.reduce((t, r) => t + r.quoted, 0),
+    };
+    const teamDenom = team.target * workingDays;
+
+    return {
+      funnel: {
+        poolTotal,
+        assigned: poolTotal - unassigned,
+        unassigned,
+        attempted,
+        contacted,
+        decisionMakers: 0, // pending the decision-maker capture feature
+        opportunities,
+      },
+      perRep,
+      team: {
+        ...team,
+        attainment: teamDenom ? Math.round((team.attempts / teamDenom) * 100) : null,
+        oppYield: team.dm ? Math.round((team.opportunities / team.dm) * 100) : null,
+      },
+      period,
+      workingDays,
+    };
+  },
+
+  /** Reps (any status) with company counts and last-active timestamp. */
+  async listTeam(ctx: AuthContext) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const [reps, counts, last] = await Promise.all([
+      db
+        .select({
+          id: user.id,
+          email: user.email,
+          dailyTarget: user.dailyTarget,
+          status: user.status,
+          dailyEmailEnabled: user.dailyEmailEnabled,
+        })
+        .from(user)
+        .where(and(eq(user.distributorId, distributorId), eq(user.role, "rep")))
+        .orderBy(user.email),
+      db
+        .select({ ownerUserId: company.ownerUserId, n: sql<number>`count(*)::int` })
+        .from(company)
+        .where(eq(company.distributorId, distributorId))
+        .groupBy(company.ownerUserId),
+      db
+        .select({
+          repUserId: interaction.repUserId,
+          last: sql<string>`max(${interaction.createdAt})`,
+        })
+        .from(interaction)
+        .where(eq(interaction.distributorId, distributorId))
+        .groupBy(interaction.repUserId),
+    ]);
+    const countMap = new Map(counts.map((c) => [c.ownerUserId, c.n]));
+    const lastMap = new Map(last.map((l) => [l.repUserId, l.last]));
+    return reps.map((r) => ({
+      ...r,
+      companyCount: countMap.get(r.id) ?? 0,
+      lastActive: lastMap.get(r.id) ?? null,
+    }));
+  },
+
+  async updateRep(
+    ctx: AuthContext,
+    repId: string,
+    patch: { dailyTarget?: number; status?: "active" | "paused" | "disabled"; dailyEmailEnabled?: boolean },
+  ) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const set: Partial<typeof user.$inferInsert> = { updatedAt: new Date() };
+    if (patch.dailyTarget !== undefined) set.dailyTarget = patch.dailyTarget;
+    if (patch.status !== undefined) set.status = patch.status;
+    if (patch.dailyEmailEnabled !== undefined) set.dailyEmailEnabled = patch.dailyEmailEnabled;
+    const res = await db
+      .update(user)
+      .set(set)
+      .where(and(eq(user.id, repId), eq(user.distributorId, distributorId), eq(user.role, "rep")))
+      .returning({ id: user.id });
+    if (!res[0]) throw new NotFoundError("Rep not found");
+  },
+
+  async createRep(ctx: AuthContext, input: { email: string; dailyTarget: number }) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    await db.insert(user).values({
+      email: input.email.trim().toLowerCase(),
+      role: "rep",
+      distributorId,
+      dailyTarget: input.dailyTarget,
+      status: "active",
+    });
+  },
+
+  async revokeRepSessions(ctx: AuthContext, repId: string) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const [r] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.id, repId), eq(user.distributorId, distributorId)))
+      .limit(1);
+    if (!r) throw new NotFoundError("Rep not found");
+    await db
+      .update(session)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(session.userId, repId), isNull(session.revokedAt)));
+  },
+
+  /** Move every company owned by one rep to another rep (or unassign). */
+  async reassignCompanies(ctx: AuthContext, fromRepId: string, toRepId: string | null) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    if (toRepId) {
+      const [t] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.id, toRepId), eq(user.distributorId, distributorId), eq(user.role, "rep")))
+        .limit(1);
+      if (!t) throw new ForbiddenError("Target is not a rep in your distributor");
+    }
+    const res = await db
+      .update(company)
+      .set({ ownerUserId: toRepId ?? null, updatedAt: new Date() })
+      .where(and(eq(company.distributorId, distributorId), eq(company.ownerUserId, fromRepId)))
+      .returning({ id: company.id });
+    return res.length;
+  },
+
+  /** Full manager settings (merged over defaults). */
+  async getSettings(ctx: AuthContext): Promise<ManagerSettings> {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+    const [d] = await db
+      .select({ settings: distributor.settings })
+      .from(distributor)
+      .where(eq(distributor.id, distributorId))
+      .limit(1);
+    return mergeSettings(d?.settings);
+  },
+
+  /**
+   * Save the whole settings section at once: update existing reps, create new
+   * ones, and write the distributor-level settings. Returns the fresh team and
+   * settings so the client can reset its baseline.
+   */
+  async saveManagerSettings(
+    ctx: AuthContext,
+    payload: {
+      reps: { id: string; dailyTarget: number; status: "active" | "paused" | "disabled"; dailyEmailEnabled: boolean }[];
+      newReps: { email: string; dailyTarget: number }[];
+      settings: ManagerSettings;
+    },
+  ) {
+    const distributorId = requireManager(ctx);
+    const db = getDb();
+
+    for (const r of payload.reps) {
+      await db
+        .update(user)
+        .set({
+          dailyTarget: r.dailyTarget,
+          status: r.status,
+          dailyEmailEnabled: r.dailyEmailEnabled,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(user.id, r.id), eq(user.distributorId, distributorId), eq(user.role, "rep")));
+    }
+
+    for (const nr of payload.newReps) {
+      const email = nr.email.trim().toLowerCase();
+      if (!email.includes("@")) continue;
+      await db
+        .insert(user)
+        .values({ email, role: "rep", distributorId, dailyTarget: nr.dailyTarget, status: "active" })
+        .onConflictDoNothing();
+    }
+
+    await db
+      .update(distributor)
+      .set({ settings: mergeSettings(payload.settings), updatedAt: new Date() })
+      .where(eq(distributor.id, distributorId));
+
+    return { team: await this.listTeam(ctx), settings: await this.getSettings(ctx) };
   },
 };

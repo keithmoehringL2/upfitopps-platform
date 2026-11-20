@@ -1,0 +1,6 @@
+external id,name,address,city,state,zip,phone,website,industry,total vehicles,trucks,vans,fleet mix,priority,priority explanation
+TC-101,Capital Fire Protection,1203 W Howard Ln,Austin,TX,78753,(512) 555-0201,capitalfireprotect.com,Fire Protection,16,6,10,Transit 250 x10 · F-250 x6,4.1,Inspection vans plus pipe-rack trucks; fleet growing
+TC-102,Green Mesa Irrigation,540 Chisholm Trail,Round Rock,TX,78681,(512) 555-0202,greenmesairrigation.com,Landscaping,12,8,4,F-250 x8 · Transit x4,3.4,Seasonal crews with pickup-heavy fleet
+TC-103,Barton Creek Electric,2110 S Lamar Blvd,Austin,TX,78704,(512) 555-0203,bartoncreekelectric.com,Electrical,19,5,14,Transit x14 · F-250 x5,4.4,Large van fleet; strong upfit fit
+TC-104,Hill Country Overhead Doors,300 Highway 290,Dripping Springs,TX,78620,(512) 555-0204,hcohdoors.com,Construction,7,5,2,F-350 x5 · Transit x2,3.0,Door-rack trucks; mid-size
+TC-105,ATX Mobile Welding,900 Springdale Rd,Austin,TX,78702,(512) 555-0205,atxmobilewelding.com,Services,5,5,0,F-350 x5,2.8,Small service-truck fleet with crane bodies
