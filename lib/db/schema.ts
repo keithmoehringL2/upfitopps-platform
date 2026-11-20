@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   numeric,
+  doublePrecision,
   date,
   jsonb,
   timestamp,
@@ -228,6 +229,18 @@ export const company = pgTable(
     touchIntervalDays: integer("touch_interval_days"),
     lastTouchDate: date("last_touch_date"),
     ownerUserId: uuid("owner_user_id").references(() => user.id),
+
+    // Confirmed primary decision-maker (jsonb: name/title/phone/email/notes) and
+    // number of quotes recorded — captured on the rep Company Detail screen.
+    decisionMaker: jsonb("decision_maker"),
+    decisionMakerAt: timestamp("decision_maker_at", { withTimezone: true }),
+    quoteCount: integer("quote_count").notNull().default(0),
+
+    // Geocoding resolved during data prep (Google Place ID + coordinates) so the
+    // ZIP map can drop pins without the app geocoding messy addresses.
+    placeId: text("place_id"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -21,6 +21,9 @@ export interface CompanyImport {
   fleetMix?: string | null;
   priorityScore?: string | null;
   priorityExplanation?: string | null;
+  placeId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface ParseResult {
@@ -132,6 +135,14 @@ const HEADER_MAP: Record<string, keyof CompanyImport> = {
   score: "priorityScore",
   "priority explanation": "priorityExplanation",
   why: "priorityExplanation",
+  "place id": "placeId",
+  "google place id": "placeId",
+  latitude: "latitude",
+  lat: "latitude",
+  longitude: "longitude",
+  lng: "longitude",
+  lon: "longitude",
+  long: "longitude",
 };
 
 const normalizeHeader = (h: string) =>
@@ -149,6 +160,10 @@ function toScore(v: string): string | null {
   if (!Number.isFinite(n)) return null;
   const clamped = Math.max(0, Math.min(9.9, n));
   return clamped.toFixed(1);
+}
+function toFloat(v: string): number | null {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 /**
@@ -205,6 +220,9 @@ export function rowsToCompanyInputs(rows: string[][]): ParseResult {
       fleetMix: rec.fleetMix || null,
       priorityScore: rec.priorityScore ? toScore(rec.priorityScore) : null,
       priorityExplanation: rec.priorityExplanation || null,
+      placeId: rec.placeId || null,
+      latitude: rec.latitude ? toFloat(rec.latitude) : null,
+      longitude: rec.longitude ? toFloat(rec.longitude) : null,
     });
   }
 

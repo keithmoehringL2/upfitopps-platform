@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
@@ -107,4 +108,69 @@ export async function logOutcome(
 export async function repLogout(): Promise<void> {
   await deleteSession();
   redirect("/rep/login");
+}
+
+// ───────────────────────── Decision-maker + quote ────────────────────────
+
+type RepResult = { ok?: true; error?: string };
+
+export async function saveDecisionMakerAction(
+  companyId: string,
+  dm: { name: string; title?: string; phone?: string; email?: string; notes?: string },
+): Promise<RepResult> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "rep") return { error: "You are not signed in as a rep." };
+  if (!dm.name.trim()) return { error: "Enter a name." };
+  try {
+    await data.saveDecisionMaker(ctx, companyId, dm);
+    revalidatePath(`/rep/company/${companyId}`);
+    revalidatePath("/manager");
+    return { ok: true };
+  } catch {
+    return { error: "Could not save the decision-maker." };
+  }
+}
+
+export async function removeDecisionMakerAction(companyId: string): Promise<RepResult> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "rep") return { error: "You are not signed in as a rep." };
+  try {
+    await data.removeDecisionMaker(ctx, companyId);
+    revalidatePath(`/rep/company/${companyId}`);
+    revalidatePath("/manager");
+    return { ok: true };
+  } catch {
+    return { error: "Could not remove the decision-maker." };
+  }
+}
+
+export async function recordQuoteAction(companyId: string): Promise<RepResult & { count?: number }> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "rep") return { error: "You are not signed in as a rep." };
+  try {
+    const count = await data.recordQuote(ctx, companyId);
+    revalidatePath(`/rep/company/${companyId}`);
+    revalidatePath("/manager");
+    return { ok: true, count };
+  } catch {
+    return { error: "Could not record the quote." };
+  }
+}
+
+// ───────────────────────── Find by ZIP ───────────────────────────────────
+
+export type ZipRow = Awaited<ReturnType<typeof data.searchCompaniesByZip>>[number];
+type ZipResult = { ok: true; zip: string; results: ZipRow[] } | { ok: false; error: string };
+
+export async function searchZipAction(zip: string): Promise<ZipResult> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "rep") return { ok: false, error: "You are not signed in as a rep." };
+  const z = zip.replace(/\D/g, "").slice(0, 5);
+  if (z.length !== 5) return { ok: false, error: "Enter all five digits." };
+  try {
+    const results = await data.searchCompaniesByZip(ctx, z);
+    return { ok: true, zip: z, results };
+  } catch {
+    return { ok: false, error: "Could not search that ZIP." };
+  }
 }

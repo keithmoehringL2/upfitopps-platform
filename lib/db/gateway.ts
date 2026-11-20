@@ -285,6 +285,158 @@ export const data = {
     return { worked: worked ?? 0, target: u?.target ?? null };
   },
 
+  /** Confirm/update the primary decision-maker for a company the rep owns. */
+  async saveDecisionMaker(
+    ctx: AuthContext,
+    companyId: string,
+    dm: { name: string; title?: string; phone?: string; email?: string; notes?: string },
+  ) {
+    const target = await this.getCompanyInScope(ctx, companyId);
+    if (!target) throw new NotFoundError("Company not found in scope");
+    if (!dm.name.trim()) throw new ForbiddenError("A name is required");
+    const db = getDb();
+    await db
+      .update(company)
+      .set({
+        decisionMaker: {
+          name: dm.name.trim(),
+          title: dm.title?.trim() || null,
+          phone: dm.phone?.trim() || null,
+          email: dm.email?.trim() || null,
+          notes: dm.notes?.trim() || null,
+        },
+        decisionMakerAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(company.id, companyId));
+  },
+
+  async removeDecisionMaker(ctx: AuthContext, companyId: string) {
+    const target = await this.getCompanyInScope(ctx, companyId);
+    if (!target) throw new NotFoundError("Company not found in scope");
+    const db = getDb();
+    await db
+      .update(company)
+      .set({ decisionMaker: null, decisionMakerAt: null, updatedAt: new Date() })
+      .where(eq(company.id, companyId));
+  },
+
+  /** Record that a quote was sent (increments the company's quote count). */
+  async recordQuote(ctx: AuthContext, companyId: string) {
+    const target = await this.getCompanyInScope(ctx, companyId);
+    if (!target) throw new NotFoundError("Company not found in scope");
+    const db = getDb();
+    const [row] = await db
+      .update(company)
+      .set({ quoteCount: sql`${company.quoteCount} + 1`, updatedAt: new Date() })
+      .where(eq(company.id, companyId))
+      .returning({ quoteCount: company.quoteCount });
+    return row.quoteCount;
+  },
+
+  /**
+   * Team leaderboard for the rep's own queue — aggregate per-rep rankings only
+   * (no company names or contacts), gated by the distributor's leaderboard
+   * setting. Returns null when the manager has turned it off.
+   */
+  async getLeaderboard(ctx: AuthContext, period: "today" | "week" | "month") {
+    const distributorId = requireDistributorScope(ctx);
+    const db = getDb();
+    const [distRow] = await db
+      .select({ settings: distributor.settings })
+      .from(distributor)
+      .where(eq(distributor.id, distributorId))
+      .limit(1);
+    if (!mergeSettings(distRow?.settings).leaderboard.enabled) return null;
+
+    const workingDays = { today: 1, week: 5, month: 22 }[period];
+    const since =
+      period === "today"
+        ? startOfTodayUTC()
+        : new Date(Date.now() - (period === "week" ? 7 : 30) * 86_400_000);
+
+    const [reps, acts, comps] = await Promise.all([
+      db
+        .select({ id: user.id, email: user.email, dailyTarget: user.dailyTarget })
+        .from(user)
+        .where(and(eq(user.distributorId, distributorId), eq(user.role, "rep"), eq(user.status, "active"))),
+      db
+        .select({ repUserId: interaction.repUserId, outcome: interaction.outcome, createdAt: interaction.createdAt })
+        .from(interaction)
+        .where(eq(interaction.distributorId, distributorId)),
+      db
+        .select({ ownerUserId: company.ownerUserId, lifecycleState: company.lifecycleState })
+        .from(company)
+        .where(eq(company.distributorId, distributorId)),
+    ]);
+
+    const isAttempt = (o: string) => ["no_answer", "voicemail", "gatekeeper", "decision_maker"].includes(o);
+    const periodActs = acts.filter((a) => a.createdAt >= since);
+
+    const rows = reps
+      .map((r) => {
+        const ra = periodActs.filter((a) => a.repUserId === r.id);
+        const calls = ra.filter((a) => isAttempt(a.outcome)).length;
+        const dm = ra.filter((a) => a.outcome === "decision_maker").length;
+        const opp = comps.filter((c) => c.ownerUserId === r.id && c.lifecycleState === "opp").length;
+        const target = r.dailyTarget ?? 0;
+        const denom = target * workingDays;
+        return {
+          id: r.id,
+          email: r.email,
+          calls,
+          goalPct: denom ? Math.round((calls / denom) * 100) : null,
+          dm,
+          opp,
+          conv: dm ? Math.round((opp / dm) * 100) : null,
+          isMe: r.id === ctx.userId,
+        };
+      })
+      .sort((a, b) => b.calls - a.calls)
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+
+    return { rows, period };
+  },
+
+  /**
+   * Find-by-ZIP for reps. Cross-owner by design: shows every cold prospect in
+   * the ZIP with its owner (never changes ownership), scoped to the distributor.
+   * Includes coordinates/place id so the queue map can drop pins.
+   */
+  async searchCompaniesByZip(ctx: AuthContext, zip: string) {
+    const distributorId = requireDistributorScope(ctx);
+    const db = getDb();
+    return db
+      .select({
+        id: company.id,
+        name: company.name,
+        address: company.address,
+        city: company.city,
+        state: company.state,
+        zip: company.zip,
+        phone: company.phone,
+        industryPrimary: company.industryPrimary,
+        priorityScore: company.priorityScore,
+        lastTouchDate: company.lastTouchDate,
+        ownerUserId: company.ownerUserId,
+        ownerEmail: user.email,
+        placeId: company.placeId,
+        latitude: company.latitude,
+        longitude: company.longitude,
+      })
+      .from(company)
+      .leftJoin(user, eq(company.ownerUserId, user.id))
+      .where(
+        and(
+          eq(company.distributorId, distributorId),
+          eq(company.zip, zip),
+          eq(company.lifecycleState, "cold"),
+          isNull(company.suppressed),
+        ),
+      )
+      .orderBy(sql`${company.priorityScore} desc nulls last`);
+  },
+
   // ───────────────────────── Manager: reps, assignment, import ─────────────
 
   /** Active reps in the manager's distributor (for the assignment picker). */
@@ -390,6 +542,9 @@ export const data = {
           fleetMix: sql`excluded.fleet_mix`,
           priorityScore: sql`excluded.priority_score`,
           priorityExplanation: sql`excluded.priority_explanation`,
+          placeId: sql`excluded.place_id`,
+          latitude: sql`excluded.latitude`,
+          longitude: sql`excluded.longitude`,
           updatedAt: new Date(),
         },
       });
@@ -416,6 +571,8 @@ export const data = {
           id: company.id,
           ownerUserId: company.ownerUserId,
           lifecycleState: company.lifecycleState,
+          decisionMaker: company.decisionMaker,
+          quoteCount: company.quoteCount,
         })
         .from(company)
         .where(eq(company.distributorId, distributorId)),
@@ -451,15 +608,17 @@ export const data = {
       (byCompany.get(c.id) ?? []).some((a) => isContact(a.outcome)),
     ).length;
     const opportunities = pool.filter((c) => c.lifecycleState === "opp").length;
+    const decisionMakers = pool.filter((c) => c.decisionMaker != null).length;
 
     const periodActs = acts.filter((a) => a.createdAt >= since);
     const perRep = reps.map((r) => {
       const ra = periodActs.filter((a) => a.repUserId === r.id);
+      const mine = companies.filter((c) => c.ownerUserId === r.id);
       const attempts = ra.filter((a) => isAttempt(a.outcome)).length;
       const dm = ra.filter((a) => a.outcome === "decision_maker").length;
-      const opp = companies.filter(
-        (c) => c.ownerUserId === r.id && c.lifecycleState === "opp",
-      ).length;
+      const opp = mine.filter((c) => c.lifecycleState === "opp").length;
+      const pdm = mine.filter((c) => c.decisionMaker != null).length;
+      const quoted = mine.filter((c) => (c.quoteCount ?? 0) > 0).length;
       const target = r.dailyTarget ?? 0;
       const denom = target * workingDays;
       return {
@@ -468,12 +627,10 @@ export const data = {
         target,
         goal: target * workingDays,
         attempts,
-        // Decision-makers identified and quotes are not captured yet (pending the
-        // decision-maker + quote features); surfaced as 0 to match the design.
-        pdm: 0,
+        pdm,
         dm,
         opportunities: opp,
-        quoted: 0,
+        quoted,
         attainment: denom ? Math.round((attempts / denom) * 100) : null,
         oppYield: dm ? Math.round((opp / dm) * 100) : null,
       };
@@ -495,7 +652,7 @@ export const data = {
         unassigned,
         attempted,
         contacted,
-        decisionMakers: 0, // pending the decision-maker capture feature
+        decisionMakers,
         opportunities,
       },
       perRep,

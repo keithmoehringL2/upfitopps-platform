@@ -3,6 +3,7 @@ import { requireRep, getCurrentUser } from "@/lib/auth/dal";
 import { data } from "@/lib/db/gateway";
 import { repLogout } from "@/lib/rep/actions";
 import { brandRampVars } from "@/lib/brand/ramp";
+import { ZipSearch } from "./zip-search";
 
 // Rep work queue, rebuilt to the design handoff's Rep Mobile prototype:
 // branded sticky header + icon nav, the attempts/target hero with a segmented
@@ -28,12 +29,12 @@ export default async function RepQueuePage() {
   });
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
 
-  const nav = [
-    { icon: "ph-target", label: "Prospects", current: true },
-    { icon: "ph-bell-ringing", label: "Follow-ups", current: false },
-    { icon: "ph-map-pin", label: "ZIP", current: false },
-    { icon: "ph-address-book", label: "Contacts", current: false },
-    { icon: "ph-trophy", label: "Leaders", current: false },
+  const nav: { icon: string; label: string; href?: string; current?: boolean }[] = [
+    { icon: "ph-target", label: "Prospects", href: "/rep", current: true },
+    { icon: "ph-bell-ringing", label: "Follow-ups" },
+    { icon: "ph-map-pin", label: "ZIP", href: "/rep#zip" },
+    { icon: "ph-address-book", label: "Contacts", href: "/rep/contacts" },
+    { icon: "ph-trophy", label: "Leaders", href: "/rep/leaders" },
   ];
 
   return (
@@ -90,25 +91,31 @@ export default async function RepQueuePage() {
           </form>
         </div>
         <nav style={{ display: "flex", justifyContent: "space-between", gap: 4 }}>
-          {nav.map((n) => (
-            <div
-              key={n.label}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 2,
-                minHeight: 50,
-                padding: "5px 2px",
-                borderRadius: "var(--radius-md)",
-                color: n.current ? "var(--accent-700)" : "var(--neutral-800)",
-              }}
-            >
-              <i className={`ph-duotone ${n.icon}`} style={{ fontSize: 24, color: "var(--accent-500)" }} />
-              <span style={{ fontSize: 11 }}>{n.label}</span>
-            </div>
-          ))}
+          {nav.map((n) => {
+            const inner = (
+              <>
+                <i className={`ph-duotone ${n.icon}`} style={{ fontSize: 24, color: "var(--accent-500)" }} />
+                <span style={{ fontSize: 11 }}>{n.label}</span>
+              </>
+            );
+            const style: React.CSSProperties = {
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              minHeight: 50,
+              padding: "5px 2px",
+              borderRadius: "var(--radius-md)",
+              textDecoration: "none",
+              color: n.current ? "var(--accent-700)" : "var(--neutral-800)",
+            };
+            return n.href ? (
+              <Link key={n.label} href={n.href} style={style}>{inner}</Link>
+            ) : (
+              <div key={n.label} style={style}>{inner}</div>
+            );
+          })}
         </nav>
       </header>
 
@@ -204,6 +211,8 @@ export default async function RepQueuePage() {
             </p>
           )}
         </section>
+
+        <ZipSearch apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY} />
       </div>
     </div>
   );

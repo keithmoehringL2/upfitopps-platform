@@ -5,6 +5,7 @@ import { data } from "@/lib/db/gateway";
 import { outcomeMeta, EVENT_ICONS } from "@/lib/rep/outcomes";
 import { brandRampVars } from "@/lib/brand/ramp";
 import { LogOutcomeForm } from "./log-form";
+import { DecisionMakerSection, QuoteSection, type DecisionMaker } from "./detail-extras";
 
 export default async function RepCompanyPage({
   params,
@@ -181,6 +182,14 @@ export default async function RepCompanyPage({
           </h3>
           <LogOutcomeForm companyId={company.id} />
         </div>
+
+        <DecisionMakerSection
+          companyId={company.id}
+          initial={(company.decisionMaker as DecisionMaker | null) ?? null}
+          confirmedAt={company.decisionMakerAt ? fmtDate(company.decisionMakerAt) : null}
+        />
+
+        <QuoteSection companyId={company.id} count={company.quoteCount ?? 0} />
       </div>
     </div>
   );

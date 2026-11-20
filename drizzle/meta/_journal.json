@@ -22,6 +22,20 @@
       "when": 1795184545406,
       "tag": "0002_dapper_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795190575964,
+      "tag": "0003_mushy_omega_red",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795193098324,
+      "tag": "0004_shallow_mordo",
+      "breakpoints": true
     }
   ]
 }
