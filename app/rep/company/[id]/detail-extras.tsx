@@ -7,6 +7,7 @@ import {
   removeDecisionMakerAction,
   saveDecisionMakerAction,
 } from "@/lib/rep/actions";
+import { showToast } from "@/lib/rep/toast";
 
 export interface DecisionMaker {
   name: string;
@@ -56,7 +57,8 @@ export function DecisionMakerSection({
       const res = await saveDecisionMakerAction(companyId, f);
       if (res.error) setNote(res.error);
       else {
-        setNote("Confirmed as primary decision-maker.");
+        setNote("");
+        showToast("Decision-maker confirmed.");
         router.refresh();
       }
     });
@@ -69,6 +71,7 @@ export function DecisionMakerSection({
         setF({ name: "", title: "", phone: "", email: "", notes: "" });
         setOpen(false);
         setNote("");
+        showToast("Decision-maker removed.");
         router.refresh();
       }
     });
@@ -128,7 +131,8 @@ export function QuoteSection({ companyId, count }: { companyId: string; count: n
       const res = await recordQuoteAction(companyId);
       if (res.error) setNote(res.error);
       else {
-        setNote("Quote recorded.");
+        setNote("");
+        showToast("Quote recorded.");
         router.refresh();
       }
     });

@@ -5,25 +5,32 @@ import { repLogout } from "@/lib/rep/actions";
 import { brandRampVars } from "@/lib/brand/ramp";
 import { ZipSearch } from "./zip-search";
 import { FollowUps } from "./follow-ups";
+import { QueueList } from "./queue-list";
 
 // Rep work queue, rebuilt to the design handoff's Rep Mobile prototype:
 // branded sticky header + icon nav, the attempts/target hero with a segmented
 // progress bar and Start, then the ranked Cold Prospects list.
 export default async function RepQueuePage() {
   const ctx = await requireRep();
-  const [queue, progress, distributor, user, followUps] = await Promise.all([
+  const [queue, progress, distributor, user, followUps, doneIds] = await Promise.all([
     data.listRepQueue(ctx),
     data.getRepDayProgress(ctx),
     data.getDistributorById(ctx.distributorId!),
     getCurrentUser(),
     data.listFollowUps(ctx),
+    data.listCompaniesWorkedToday(ctx),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
   const isDue = (next: string | null) => !next || next <= today;
   const target = progress.target ?? queue.length;
   const remaining = Math.max(0, target - progress.worked);
-  const firstOpen = queue.find((c) => isDue(c.nextEligibleDate)) ?? queue[0];
+  // Start opens the first open (not-yet-worked-today) due prospect, falling
+  // back to any not-worked prospect, then the top of the queue.
+  const firstOpen =
+    queue.find((c) => isDue(c.nextEligibleDate) && !doneIds.includes(c.id)) ??
+    queue.find((c) => !doneIds.includes(c.id)) ??
+    queue[0];
   const dateLine = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -173,45 +180,19 @@ export default async function RepQueuePage() {
             <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>Ranked by priority</span>
           </div>
 
-          {queue.map((c, i) => {
-            const due = isDue(c.nextEligibleDate);
-            return (
-              <Link
-                key={c.id}
-                href={`/rep/company/${c.id}`}
-                style={{
-                  cursor: "pointer",
-                  display: "grid",
-                  gridTemplateColumns: "26px minmax(0,1fr) auto 16px",
-                  gap: 12,
-                  alignItems: "center",
-                  padding: "12px 8px",
-                  margin: "0 -8px",
-                  borderRadius: "var(--radius-md)",
-                  textDecoration: "none",
-                  color: "inherit",
-                  opacity: due ? 1 : 0.55,
-                }}
-              >
-                <span style={{ fontSize: 17, color: "var(--neutral-600)" }}>{i + 1}</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{c.name}</span>
-                  <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>
-                    {[c.city, c.industryPrimary].filter(Boolean).join(" · ")}
-                    {!due && c.nextEligibleDate ? ` · eligible ${c.nextEligibleDate}` : ""}
-                  </span>
-                </div>
-                <span style={{ fontSize: 18, fontWeight: 600 }}>{c.priorityScore ?? "—"}</span>
-                <i className="ph-duotone ph-caret-right" style={{ fontSize: 16, color: "var(--neutral-600)" }} />
-              </Link>
-            );
-          })}
-
-          {queue.length === 0 && (
-            <p style={{ fontSize: 14, color: "var(--neutral-700)", padding: "16px 0" }}>
-              Your queue is clear. Nice work — new prospects appear here once assigned.
-            </p>
-          )}
+          <QueueList
+            rows={queue.map((c) => ({
+              id: c.id,
+              name: c.name,
+              city: c.city,
+              industryPrimary: c.industryPrimary,
+              priorityScore: c.priorityScore,
+              nextEligibleDate: c.nextEligibleDate,
+            }))}
+            doneIds={doneIds}
+            target={progress.target}
+            today={today}
+          />
         </section>
 
         <FollowUps due={followUps.due} upcoming={followUps.upcoming} />

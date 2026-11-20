@@ -132,11 +132,11 @@ export default async function RepCompanyPage({
             <span>{company.phone ? `Call ${company.phone}` : "No phone on file"}</span>
           </a>
           <div style={{ display: "flex", gap: 10 }}>
-            <a href={mapUrl} target="_blank" className="btn btn-secondary" style={{ flex: 1, minHeight: 44 }}>
+            <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ flex: 1, minHeight: 44 }}>
               <i className="ph-duotone ph-map-pin" />
               Directions
             </a>
-            <a href={webUrl} target="_blank" className="btn btn-secondary" style={{ flex: 1, minHeight: 44 }}>
+            <a href={webUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ flex: 1, minHeight: 44 }}>
               <i className="ph-duotone ph-globe" />
               Website
             </a>

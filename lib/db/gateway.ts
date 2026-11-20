@@ -412,6 +412,23 @@ export const data = {
     return { worked: worked ?? 0, target: u?.target ?? null };
   },
 
+  /** Distinct companies this rep has logged an outcome against today — used to
+   *  mark queue rows "done" for the day's session. */
+  async listCompaniesWorkedToday(ctx: AuthContext): Promise<string[]> {
+    requireDistributorScope(ctx);
+    const db = getDb();
+    const rows = await db
+      .selectDistinct({ companyId: interaction.companyId })
+      .from(interaction)
+      .where(
+        and(
+          eq(interaction.repUserId, ctx.userId),
+          gte(interaction.createdAt, startOfTodayUTC()),
+        ),
+      );
+    return rows.map((r) => r.companyId);
+  },
+
   /** Confirm/update the primary decision-maker for a company the rep owns. */
   async saveDecisionMaker(
     ctx: AuthContext,

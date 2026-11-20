@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { logOutcome, type LogState } from "@/lib/rep/actions";
 import { FOLLOW_UP_OPTIONS, OUTCOMES } from "@/lib/rep/outcomes";
+import { markSkipped, queueToast } from "@/lib/rep/session-state";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 function daysFromToday(dateStr: string): number | null {
@@ -13,6 +15,7 @@ function daysFromToday(dateStr: string): number | null {
 }
 
 export function LogOutcomeForm({ companyId }: { companyId: string }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<LogState | undefined, FormData>(
     logOutcome,
     undefined,
@@ -27,11 +30,25 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
   const [removeOn, setRemoveOn] = useState(false);
   const [removeKind, setRemoveKind] = useState<"remove" | "dnc">("remove");
 
+  // On a successful save, hand a toast to the queue page and navigate there.
+  useEffect(() => {
+    if (state?.ok) {
+      queueToast("Outcome logged.");
+      router.push("/rep");
+    }
+  }, [state, router]);
+
   const isGk = outcome === "gatekeeper";
   const isDm = outcome === "decision_maker";
 
-  // Compose the note the way the prototype does for gatekeeper calls.
-  const composedNote = isGk && who.trim() ? `Spoke with ${who.trim()}. ${note}`.trim() : note;
+  // Compose the note the way the prototype does for gatekeeper calls. Notes
+  // only apply to Gatekeeper / Decision-Maker, so any note typed before
+  // switching to another outcome is dropped on submit.
+  const composedNote = !(isGk || isDm)
+    ? ""
+    : isGk && who.trim()
+      ? `Spoke with ${who.trim()}. ${note}`.trim()
+      : note;
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -102,16 +119,20 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
             </div>
           )}
 
-          <div className="field">
-            <label>Note (optional)</label>
-            <textarea
-              className="input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What happened?"
-              style={{ minHeight: 72, fontSize: 15 }}
-            />
-          </div>
+          {/* Per the design, a free-text note is offered only for Gatekeeper
+              and Decision-Maker calls. */}
+          {(isGk || isDm) && (
+            <div className="field">
+              <label>Note (optional)</label>
+              <textarea
+                className="input"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What happened?"
+                style={{ minHeight: 72, fontSize: 15 }}
+              />
+            </div>
+          )}
 
           {/* Follow-up */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -206,13 +227,19 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
           boxShadow: "0 -1px 0 color-mix(in srgb, var(--text) 12%, transparent)",
         }}
       >
-        <a
-          href="/rep"
+        <button
+          type="button"
+          onClick={() => {
+            markSkipped(companyId);
+            // Full navigation so the queue re-reads the device-local skip state
+            // on a fresh mount (a soft push would serve the cached queue).
+            window.location.assign("/rep");
+          }}
           className="btn"
-          style={{ minHeight: 48, padding: "0 14px", color: "var(--bg)", fontWeight: 400, opacity: 0.85 }}
+          style={{ minHeight: 48, padding: "0 14px", color: "var(--bg)", fontWeight: 400, opacity: 0.85, background: "transparent", border: "none", cursor: "pointer" }}
         >
           Skip
-        </a>
+        </button>
         <span style={{ flex: 1, textAlign: "center", fontSize: 12, color: "var(--bg)", opacity: 0.85 }}>
           {outcome ? "Saves and moves on" : "Pick an outcome"}
         </span>

@@ -58,7 +58,7 @@ export async function requestRepLink(
   return { sent: true };
 }
 
-export type LogState = { error?: string };
+export type LogState = { error?: string; ok?: boolean };
 
 /** Log an outcome against a prospect, then advance the rep back to their queue. */
 export async function logOutcome(
@@ -101,8 +101,10 @@ export async function logOutcome(
     };
   }
 
-  // Outside the try: redirect() throws a control-flow signal we must not catch.
-  redirect("/rep");
+  // The client toasts and navigates back to the queue on success (so the toast
+  // survives the transition); revalidate so the queue shows the row as worked.
+  revalidatePath("/rep");
+  return { ok: true };
 }
 
 export async function repLogout(): Promise<void> {
