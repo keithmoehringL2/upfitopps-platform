@@ -20,6 +20,20 @@ export type ResolvedHost =
  * This is routing only — it never grants access. Authorization must
  * independently confirm the authenticated user is allowed on this tenant.
  */
+/**
+ * Absolute base URL for a distributor's workspace, derived from its slug and
+ * the root domain. Used where there is no request host to read — notably the
+ * daily-email cron, whose links must land on the rep's own subdomain so the
+ * host-only session cookie applies there. Production serves `*.<root>` over
+ * https; local dev uses `<slug>.localhost:<port>` (which resolves to 127.0.0.1).
+ */
+export function tenantBaseUrl(slug: string): string {
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  if (process.env.NODE_ENV === "production") return `https://${slug}.${root}`;
+  const port = process.env.PORT ?? "3000";
+  return `http://${slug}.localhost:${port}`;
+}
+
 export function resolveHost(rawHost: string): ResolvedHost {
   const host = (rawHost || "").split(":")[0].toLowerCase().trim();
 

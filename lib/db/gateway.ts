@@ -429,6 +429,47 @@ export const data = {
     return rows.map((r) => r.companyId);
   },
 
+  /**
+   * System/scheduled-job read (no AuthContext): the roster for the daily email
+   * — active distributors and their active, email-enabled reps. Deliberately
+   * cross-tenant because the cron serves every tenant; it returns only roster
+   * data (names, emails, settings). Each rep's actual prospect data is still
+   * read through the tenant-scoped methods with that rep's own context.
+   */
+  async listDailyEmailRoster() {
+    const db = getDb();
+    const [dists, reps] = await Promise.all([
+      db
+        .select({
+          id: distributor.id,
+          slug: distributor.slug,
+          name: distributor.name,
+          primaryColor: distributor.primaryColor,
+          settings: distributor.settings,
+        })
+        .from(distributor)
+        .where(eq(distributor.status, "active")),
+      db
+        .select({
+          id: user.id,
+          email: user.email,
+          distributorId: user.distributorId,
+          dailyTarget: user.dailyTarget,
+        })
+        .from(user)
+        .where(
+          and(
+            eq(user.role, "rep"),
+            eq(user.status, "active"),
+            eq(user.dailyEmailEnabled, true),
+          ),
+        ),
+    ]);
+    return dists
+      .map((ds) => ({ ...ds, reps: reps.filter((r) => r.distributorId === ds.id) }))
+      .filter((ds) => ds.reps.length > 0);
+  },
+
   /** Confirm/update the primary decision-maker for a company the rep owns. */
   async saveDecisionMaker(
     ctx: AuthContext,

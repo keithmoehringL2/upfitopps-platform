@@ -14,7 +14,8 @@
     "db:studio": "node --env-file=.env.local node_modules/drizzle-kit/bin.cjs studio",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:reset": "tsx --env-file=.env.local scripts/reset-db.ts",
-    "db:verify": "tsx --env-file=.env.local scripts/verify-isolation.ts"
+    "db:verify": "tsx --env-file=.env.local scripts/verify-isolation.ts",
+    "email:test": "tsx --env-file=.env.local scripts/send-daily-email.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
@@ -23,6 +24,7 @@
     "next": "^16.4.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "resend": "^6.39.0",
     "ws": "^8.23.0"
   },
   "devDependencies": {

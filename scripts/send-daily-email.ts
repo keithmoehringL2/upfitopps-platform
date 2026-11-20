@@ -1,0 +1,23 @@
+// Manually run the daily-email job once (ignores the per-distributor send-day
+// schedule via force), for local testing. With no RESEND_API_KEY it logs each
+// recipient instead of sending; with a key + verified sender it actually sends.
+//
+// Run: npm run email:test
+import { sendDailyEmails } from "../lib/email/send-daily";
+
+async function main() {
+  const result = await sendDailyEmails({ force: true });
+  console.log(`\nDaily email run — sent ${result.sent}, skipped ${result.skipped}, failed ${result.failed}`);
+  for (const d of result.details) {
+    console.log(`  ${d.status.padEnd(7)} ${d.email}${d.reason ? ` (${d.reason})` : ""}`);
+  }
+  if (!process.env.RESEND_API_KEY) {
+    console.log("\nNote: RESEND_API_KEY is not set, so nothing was actually sent.");
+  }
+  process.exit(result.failed > 0 ? 1 : 0);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
