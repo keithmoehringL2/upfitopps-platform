@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSkipped } from "@/lib/rep/session-state";
+import { pendingCompanyIds } from "@/lib/rep/outbox";
 
 export interface QueueRow {
   id: string;
@@ -30,11 +31,16 @@ export function QueueList({
   today: string;
 }) {
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [pending, setPending] = useState<Set<string>>(new Set());
   const initialReveal = target && target > 0 ? Math.min(rows.length, target) : rows.length;
   const [revealed, setRevealed] = useState(initialReveal);
 
-  // Skip state is device-local; read it after mount to avoid a hydration gap.
-  useEffect(() => setSkipped(getSkipped()), []);
+  // Device-local state read after mount to avoid a hydration gap: skipped rows
+  // (localStorage) and outcomes logged offline awaiting sync (IndexedDB outbox).
+  useEffect(() => {
+    setSkipped(getSkipped());
+    pendingCompanyIds().then((ids) => setPending(new Set(ids)));
+  }, []);
 
   if (rows.length === 0) {
     return (
@@ -46,8 +52,9 @@ export function QueueList({
 
   const doneSet = new Set(doneIds);
   const visible = rows.slice(0, revealed);
+  // A pending offline outcome counts as done (it syncs on reconnect).
   const statusOf = (id: string): "done" | "skipped" | "open" =>
-    doneSet.has(id) ? "done" : skipped.has(id) ? "skipped" : "open";
+    doneSet.has(id) || pending.has(id) ? "done" : skipped.has(id) ? "skipped" : "open";
 
   const everyVisibleWorked = visible.length > 0 && visible.every((r) => statusOf(r.id) !== "open");
   const goalMet = !!target && target > 0 && doneIds.length >= target;

@@ -1,4 +1,5 @@
 import { OfflineBanner } from "./offline-banner";
+import { OfflineSync } from "./offline-sync";
 import { ToastHost } from "./toast-host";
 
 // Mounts the device-level overlays once for every rep screen: the offline
@@ -10,6 +11,7 @@ export default function RepLayout({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <OfflineBanner />
+      <OfflineSync />
       <ToastHost />
     </>
   );

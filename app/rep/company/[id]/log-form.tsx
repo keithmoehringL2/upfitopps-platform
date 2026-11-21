@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { logOutcome, type LogState } from "@/lib/rep/actions";
 import { FOLLOW_UP_OPTIONS, OUTCOMES } from "@/lib/rep/outcomes";
 import { markSkipped, queueToast } from "@/lib/rep/session-state";
+import { enqueueOutcome } from "@/lib/rep/outbox";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 function daysFromToday(dateStr: string): number | null {
@@ -41,6 +42,27 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
   const isGk = outcome === "gatekeeper";
   const isDm = outcome === "decision_maker";
 
+  // When offline, don't hit the server action — queue the outcome in the local
+  // outbox (IndexedDB) and move on. OfflineSync replays it on reconnect.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      e.preventDefault();
+      const payload: Record<string, string> = {
+        companyId,
+        outcome,
+        note: composedNote,
+        notInterested: isDm && notInterested ? "1" : "",
+        followUpDays: followUpDays != null ? String(followUpDays) : "",
+        opportunity: opportunity ? "1" : "",
+        remove: removeOn ? removeKind : "",
+      };
+      void enqueueOutcome(companyId, payload).then(() => {
+        queueToast("Logged — will sync when online.");
+        router.push("/rep");
+      });
+    }
+  }
+
   // Compose the note the way the prototype does for gatekeeper calls. Notes
   // only apply to Gatekeeper / Decision-Maker, so any note typed before
   // switching to another outcome is dropped on submit.
@@ -51,7 +73,7 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
       : note;
 
   return (
-    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <form action={action} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="outcome" value={outcome} />
       <input type="hidden" name="note" value={composedNote} />

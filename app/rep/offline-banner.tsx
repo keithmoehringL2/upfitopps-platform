@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 
 // A neutral-900 strip pinned under the status bar while the device is offline,
-// matching the design handoff. (A full IndexedDB save-and-sync queue is a
-// separate, larger piece; this is the honest visible indicator — outcomes
-// require connectivity to save until that queue is built.)
+// matching the design handoff. Outcomes logged while offline are saved to a
+// local IndexedDB outbox and replayed on reconnect (see OfflineSync).
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
 
@@ -45,7 +44,7 @@ export function OfflineBanner() {
       }}
     >
       <i className="ph-duotone ph-wifi-slash" style={{ fontSize: 16 }} />
-      <span>Offline — reconnect to log outcomes.</span>
+      <span>Offline · outcomes save on this phone and sync when you reconnect</span>
     </div>
   );
 }
