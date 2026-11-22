@@ -34,6 +34,18 @@ export function tenantBaseUrl(slug: string): string {
   return `http://${slug}.localhost:${port}`;
 }
 
+/**
+ * Absolute base URL for the apex (marketing + manager sign-in). Managers sign in
+ * at the apex, so a manager password-setup link must land here, not on a
+ * distributor subdomain.
+ */
+export function apexBaseUrl(): string {
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  if (process.env.NODE_ENV === "production") return `https://${root}`;
+  const port = process.env.PORT ?? "3000";
+  return `http://localhost:${port}`;
+}
+
 export function resolveHost(rawHost: string): ResolvedHost {
   const host = (rawHost || "").split(":")[0].toLowerCase().trim();
 

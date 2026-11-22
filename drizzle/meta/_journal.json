@@ -57,6 +57,13 @@
       "when": 1795361892326,
       "tag": "0007_lame_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795362477468,
+      "tag": "0008_thick_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

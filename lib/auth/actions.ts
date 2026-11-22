@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { user as userTable } from "@/lib/db/schema";
-import { verifyPassword } from "./password";
+import { hashPassword, verifyPassword } from "./password";
 import { createSession, deleteSession } from "./session";
+import { consumePasswordSetupToken } from "./password-setup";
 
 // Manager password login. Reps are passwordless (separate flow) and
 // manufacturers use their own portal, so only managers authenticate here.
@@ -82,4 +83,35 @@ export async function adminLogin(
 export async function adminLogout(): Promise<void> {
   await deleteSession();
   redirect("/login");
+}
+
+// Manager first-time password setup (and reset): consume the emailed token, set
+// the password, sign them in. Served on the apex, where managers sign in.
+export async function setPassword(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < 8) {
+    return { error: "Use at least 8 characters." };
+  }
+  if (password !== confirm) {
+    return { error: "The passwords don't match." };
+  }
+
+  const userId = await consumePasswordSetupToken(token);
+  if (!userId) {
+    return { error: "This link has expired or already been used. Ask your admin for a new one." };
+  }
+
+  await getDb()
+    .update(userTable)
+    .set({ passwordHash: await hashPassword(password), updatedAt: new Date() })
+    .where(eq(userTable.id, userId));
+
+  await createSession(userId);
+  redirect("/manager");
 }

@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
+  auditLog,
   company,
   distributor,
   interaction,
@@ -10,6 +11,7 @@ import {
   session,
   user,
 } from "./schema";
+import { RESERVED_SUBDOMAINS } from "../tenancy/reserved-slugs";
 import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
@@ -38,6 +40,40 @@ function requireAdmin(ctx: AuthContext): void {
   if (ctx.role !== "l2_admin") {
     throw new ForbiddenError("L2 admin only");
   }
+}
+
+/** Slug validation shared by the availability check and provisioning. */
+export type SlugState = "ok" | "bad_format" | "reserved" | "taken";
+function slugShapeOk(slug: string): boolean {
+  return (
+    slug.length >= 3 &&
+    slug.length <= 30 &&
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)
+  );
+}
+
+/** Append an audit-log entry. High-impact admin writes go through here. */
+async function writeAudit(
+  db: ReturnType<typeof getDb>,
+  entry: {
+    distributorId?: string | null;
+    actorUserId: string;
+    action: string;
+    targetType?: string | null;
+    targetId?: string | null;
+    before?: unknown;
+    after?: unknown;
+  },
+): Promise<void> {
+  await db.insert(auditLog).values({
+    distributorId: entry.distributorId ?? null,
+    actorUserId: entry.actorUserId,
+    action: entry.action,
+    targetType: entry.targetType ?? null,
+    targetId: entry.targetId ?? null,
+    before: (entry.before ?? null) as never,
+    after: (entry.after ?? null) as never,
+  });
 }
 
 /**
@@ -202,6 +238,155 @@ export const data = {
       ...m,
       userCount: mfrUsers.filter((u) => u.manufacturerId === m.id).length,
     }));
+  },
+
+  /** Live subdomain availability for the New Distributor wizard. Admin-only. */
+  async checkSlug(ctx: AuthContext, slugRaw: string): Promise<{ state: SlugState }> {
+    requireAdmin(ctx);
+    const slug = slugRaw.trim().toLowerCase();
+    if (!slugShapeOk(slug)) return { state: "bad_format" };
+    if (RESERVED_SUBDOMAINS.has(slug)) return { state: "reserved" };
+    const db = getDb();
+    const [exists] = await db
+      .select({ id: distributor.id })
+      .from(distributor)
+      .where(eq(distributor.slug, slug))
+      .limit(1);
+    return { state: exists ? "taken" : "ok" };
+  },
+
+  /**
+   * The manufacturer programs an admin can attach to a distributor, each with
+   * its regional users (for the Program step's "Regional rep" picker). Admin-only.
+   */
+  async listProgramCatalog(ctx: AuthContext) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [progs, regionals] = await Promise.all([
+      db
+        .select({
+          id: manufacturerProgram.id,
+          name: manufacturerProgram.name,
+          manufacturerId: manufacturerProgram.manufacturerId,
+          manufacturerName: manufacturer.name,
+        })
+        .from(manufacturerProgram)
+        .innerJoin(manufacturer, eq(manufacturerProgram.manufacturerId, manufacturer.id))
+        .orderBy(manufacturer.name, manufacturerProgram.name),
+      db
+        .select({ id: user.id, name: user.name, email: user.email, manufacturerId: user.manufacturerId })
+        .from(user)
+        .where(and(eq(user.role, "mfr_regional"), eq(user.status, "active"))),
+    ]);
+    return progs.map((p) => ({
+      ...p,
+      regionals: regionals
+        .filter((r) => r.manufacturerId === p.manufacturerId)
+        .map((r) => ({ id: r.id, name: r.name ?? r.email, email: r.email })),
+    }));
+  },
+
+  /**
+   * Provision a distributor: the tenant row, its manager, reps and program
+   * assignments, in one transaction, with an audit entry. Admin-only. Returns
+   * the new ids so the caller can mint a manager password-setup link.
+   */
+  async createDistributor(
+    ctx: AuthContext,
+    input: {
+      name: string;
+      slug: string;
+      primaryColor: string;
+      secondaryColor?: string | null;
+      logoUrl?: string | null;
+      manager: { name: string; email: string };
+      reps: { name: string; email: string; dailyTarget: number }[];
+      programs: { programId: string; cohort?: string | null; regionalRepUserId?: string | null }[];
+    },
+  ): Promise<{ id: string; slug: string; managerId: string; managerEmail: string; repCount: number }> {
+    requireAdmin(ctx);
+    const name = input.name.trim();
+    const slug = input.slug.trim().toLowerCase();
+    const managerEmail = input.manager.email.trim().toLowerCase();
+    if (!name) throw new ForbiddenError("A distributor name is required");
+    if (!slugShapeOk(slug) || RESERVED_SUBDOMAINS.has(slug)) {
+      throw new ForbiddenError("That subdomain is not allowed");
+    }
+    if (!/^\S+@\S+\.\S+$/.test(managerEmail)) {
+      throw new ForbiddenError("A valid manager email is required");
+    }
+
+    const reps = input.reps
+      .map((r) => ({ name: r.name.trim(), email: r.email.trim().toLowerCase(), dailyTarget: Math.max(1, r.dailyTarget || 1) }))
+      .filter((r) => r.email && /^\S+@\S+\.\S+$/.test(r.email));
+
+    const db = getDb();
+    const [taken] = await db
+      .select({ id: distributor.id })
+      .from(distributor)
+      .where(eq(distributor.slug, slug))
+      .limit(1);
+    if (taken) throw new ForbiddenError("That subdomain is already taken");
+
+    return db.transaction(async (tx) => {
+      const [dist] = await tx
+        .insert(distributor)
+        .values({
+          name,
+          slug,
+          primaryColor: input.primaryColor,
+          secondaryColor: input.secondaryColor ?? null,
+          logoUrl: input.logoUrl ?? null,
+          status: "onboarding",
+        })
+        .returning({ id: distributor.id });
+
+      const [mgr] = await tx
+        .insert(user)
+        .values({
+          email: managerEmail,
+          name: input.manager.name.trim() || null,
+          role: "manager",
+          distributorId: dist.id,
+          status: "active",
+        })
+        .returning({ id: user.id });
+
+      if (reps.length > 0) {
+        await tx.insert(user).values(
+          reps.map((r) => ({
+            email: r.email,
+            name: r.name || null,
+            role: "rep" as const,
+            distributorId: dist.id,
+            dailyTarget: r.dailyTarget,
+            status: "active" as const,
+          })),
+        );
+      }
+
+      if (input.programs.length > 0) {
+        await tx.insert(programDistributor).values(
+          input.programs.map((p) => ({
+            programId: p.programId,
+            distributorId: dist.id,
+            regionalRepUserId: p.regionalRepUserId || null,
+            cohort: p.cohort?.trim() || null,
+          })),
+        );
+      }
+
+      await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
+        distributorId: dist.id,
+        actorUserId: ctx.userId,
+        action: "distributor.created",
+        targetType: "distributor",
+        targetId: dist.id,
+        after: { name, slug, reps: reps.length, programs: input.programs.length },
+      });
+
+      return { id: dist.id, slug, managerId: mgr.id, managerEmail, repCount: reps.length };
+    });
   },
 
   /**

@@ -41,6 +41,9 @@ export const accountStatusEnum = pgEnum("account_status", [
   "active",
   "paused",
   "disabled",
+  // Distributor lifecycle: a newly provisioned distributor starts here until
+  // its first import / go-live. (Not used for users.)
+  "onboarding",
 ]);
 
 export const companyStateEnum = pgEnum("company_state", [
@@ -93,6 +96,10 @@ export const distributor = pgTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     primaryColor: text("primary_color").notNull().default("#c8102e"),
+    // Secondary brand color (opportunity flags / warnings). Captured in
+    // Branding; the app's accent-2 still uses the fixed design-system magenta
+    // until wired, so this stores the admin's choice for later use.
+    secondaryColor: text("secondary_color"),
     logoUrl: text("logo_url"),
     status: accountStatusEnum("status").notNull().default("active"),
     // cadence intervals, email schedule, leaderboard on/off, default targets
@@ -319,6 +326,8 @@ export const programDistributor = pgTable(
       .references(() => distributor.id),
     // the manufacturer regional rep allowed to view this program-distributor
     regionalRepUserId: uuid("regional_rep_user_id").references(() => user.id),
+    // descriptive cohort label for this program↔distributor (e.g. "Fall 2026")
+    cohort: text("cohort"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
