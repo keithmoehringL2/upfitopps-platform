@@ -10,9 +10,10 @@ export type CadenceKey =
   | "not_interested"
   | "wrong_number";
 
+// Rest periods for contact/disposition outcomes. No Answer / Left Voicemail are
+// deliberately absent: those drive the single retry→park cycle (settings.retry),
+// not a per-outcome cadence.
 export const CADENCE_ROWS: { key: CadenceKey; label: string }[] = [
-  { key: "no_answer", label: "No Answer" },
-  { key: "voicemail", label: "Left Voicemail" },
   { key: "gatekeeper", label: "Spoke to Gatekeeper" },
   { key: "decision_maker", label: "Spoke to Decision-Maker" },
   { key: "not_interested", label: "Not interested now" },
@@ -27,6 +28,10 @@ export const STARTER_LENGTHS = [3, 5, 10] as const;
 
 export interface ManagerSettings {
   cadence: Record<CadenceKey, number | null>;
+  // No-contact retry cycle: how many days until a No-Contact Retry comes due
+  // after a first no-contact outreach, and how long a prospect is parked after
+  // a second no-contact before it re-enters the cold queue.
+  retry: { retryDays: number; parkDays: number };
   customer: { snoozeDays: number; remindersInDailyEmail: boolean };
   repEmail: { send: boolean; days: string[]; time: string; starterLength: number };
   summary: {
@@ -42,6 +47,7 @@ export interface ManagerSettings {
 export function defaultSettings(): ManagerSettings {
   return {
     cadence: { no_answer: 3, voicemail: 5, gatekeeper: 7, decision_maker: 14, not_interested: 60, wrong_number: null },
+    retry: { retryDays: 3, parkDays: 60 },
     customer: { snoozeDays: 7, remindersInDailyEmail: true },
     repEmail: { send: true, days: ["Mon", "Tue", "Wed", "Thu", "Fri"], time: "7:00 AM", starterLength: 5 },
     summary: { frequency: "weekly", day: "Monday", time: "7:00 AM", recipients: [], compareTrend: true },
@@ -60,6 +66,7 @@ export function mergeSettings(raw: unknown): ManagerSettings {
   const d = defaultSettings();
   const s = (raw ?? {}) as Record<string, unknown>;
   const cad = (s.cadence ?? {}) as Record<string, unknown>;
+  const rt = (s.retry ?? {}) as Record<string, unknown>;
   const cust = (s.customer ?? {}) as Record<string, unknown>;
   const re = (s.repEmail ?? {}) as Record<string, unknown>;
   const sum = (s.summary ?? {}) as Record<string, unknown>;
@@ -81,6 +88,10 @@ export function mergeSettings(raw: unknown): ManagerSettings {
 
   return {
     cadence,
+    retry: {
+      retryDays: posInt(rt.retryDays, d.retry.retryDays),
+      parkDays: posInt(rt.parkDays, d.retry.parkDays),
+    },
     customer: {
       snoozeDays: posInt(cust.snoozeDays, d.customer.snoozeDays),
       remindersInDailyEmail: bool(cust.remindersInDailyEmail, d.customer.remindersInDailyEmail),

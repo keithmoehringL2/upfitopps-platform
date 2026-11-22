@@ -92,7 +92,12 @@ export async function buildDailyEmails(opts?: { force?: boolean; now?: Date }): 
       }));
       const fus: DailyEmailFollowUp[] = followUps.due.map((f) => ({
         name: f.name,
-        kind: f.kind === "touch_base" ? "Customer" : "Follow-up",
+        kind:
+          f.kind === "touch_base"
+            ? "Customer"
+            : f.kind === "no_contact_retry"
+              ? "Retry"
+              : "Follow-up",
         reason:
           f.kind === "touch_base"
             ? f.note ?? "Customer check-in due"

@@ -234,6 +234,17 @@ export const company = pgTable(
     // is shown italicized on the reminder row.
     followUpDate: date("follow_up_date"),
     followUpNote: text("follow_up_note"),
+    // No-Contact Retry: set after a first no-contact outreach (no_answer /
+    // voicemail). While set, the company sits in the Follow-up Queue (not the
+    // cold queue); a second no-contact clears it and parks the company.
+    retryDate: date("retry_date"),
+    // Consecutive no-contact attempts — park on the 2nd, reset on contact.
+    noContactAttempts: integer("no_contact_attempts").notNull().default(0),
+    // Stable cold-queue position. Set on entry (import/creation, via the
+    // default) and reset to now() whenever the company is parked/rested, so
+    // re-entrants go to the back. The cold queue orders by this, then priority,
+    // so a fresh import or a week away never reshuffles unworked prospects.
+    queuedAt: timestamp("queued_at", { withTimezone: true }).notNull().defaultNow(),
     ownerUserId: uuid("owner_user_id").references(() => user.id),
 
     // Confirmed primary decision-maker (jsonb: name/title/phone/email/notes) and

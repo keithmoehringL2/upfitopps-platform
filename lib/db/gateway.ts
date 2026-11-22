@@ -109,9 +109,16 @@ export const data = {
   },
 
   /**
-   * A rep's work queue: the companies they own, minus suppressed ones, with the
-   * due ones (never touched, or next-eligible on/before today) floated to the
-   * top, then by priority score, then name.
+   * A rep's cold prospecting queue: companies they own that aren't scheduled
+   * elsewhere — never-contacted, plus parked prospects whose cooldown has
+   * expired. Rep-set promises and pending No-Contact Retries live in the
+   * Follow-up Queue instead.
+   *
+   * The order is STABLE: companies are ranked by their queue position
+   * (`queuedAt`), then by priority within an intake, then name. Because the
+   * position is stamped on entry and only reset when a company is parked/rested,
+   * a fresh import or a rep being away for a week never reshuffles the prospects
+   * at the top — new arrivals queue behind what's already there.
    */
   async listRepQueue(ctx: AuthContext) {
     const distributorId = requireDistributorScope(ctx);
@@ -120,7 +127,6 @@ export const data = {
     }
     const db = getDb();
     const today = todayISO();
-    const dueRank = sql`case when ${company.nextEligibleDate} is null or ${company.nextEligibleDate} <= ${today} then 0 else 1 end`;
     return db
       .select()
       .from(company)
@@ -128,25 +134,30 @@ export const data = {
         and(
           eq(company.distributorId, distributorId),
           eq(company.ownerUserId, ctx.userId),
-          eq(company.lifecycleState, "cold"), // opportunities leave the cold queue
+          eq(company.lifecycleState, "cold"), // opportunities/customers leave the cold queue
           isNull(company.suppressed),
-          // Companies with an explicit follow-up pending are handled by the
-          // Follow-up Reminders flow, not the routine cold queue.
+          // Rep-set promises and No-Contact Retries belong to the Follow-up
+          // Queue, not the cold queue.
           isNull(company.followUpDate),
+          isNull(company.retryDate),
+          // Parked/resting prospects re-enter automatically once the date passes.
+          sql`(${company.nextEligibleDate} is null or ${company.nextEligibleDate} <= ${today})`,
         ),
       )
       .orderBy(
-        dueRank,
+        company.queuedAt,
         sql`${company.priorityScore} desc nulls last`,
         company.name,
       );
   },
 
   /**
-   * Follow-up reminders for a rep: explicit follow-ups they set (due today or
-   * overdue, plus a dated "upcoming" list) and customer touch-base reminders.
-   * These are separate from the cold queue and never count toward the daily
-   * goal. Reps only; scoped to companies they own.
+   * The rep's Follow-up Queue: rep-set promises (highest priority), No-Contact
+   * Retries (the automatic "try again" after a first no-contact outreach), and
+   * customer touch-base reminders. Promises and retries each sit here instead of
+   * the cold queue. Due today/overdue rows go to `due`; future ones to
+   * `upcoming`. These never count toward the daily cold-prospecting goal. Reps
+   * only; scoped to companies they own.
    */
   async listFollowUps(ctx: AuthContext) {
     const distributorId = requireDistributorScope(ctx);
@@ -165,6 +176,7 @@ export const data = {
       lastTouchDate: company.lastTouchDate,
       followUpDate: company.followUpDate,
       followUpNote: company.followUpNote,
+      retryDate: company.retryDate,
       touchIntervalDays: company.touchIntervalDays,
       lifecycleState: company.lifecycleState,
     };
@@ -175,12 +187,17 @@ export const data = {
       isNull(company.suppressed),
     );
 
-    const [explicit, customers] = await Promise.all([
+    const [explicit, retries, customers] = await Promise.all([
       db
         .select(cols)
         .from(company)
         .where(and(base, isNotNull(company.followUpDate)))
         .orderBy(company.followUpDate),
+      db
+        .select(cols)
+        .from(company)
+        .where(and(base, isNotNull(company.retryDate)))
+        .orderBy(company.retryDate),
       db
         .select(cols)
         .from(company)
@@ -193,6 +210,29 @@ export const data = {
         ),
     ]);
 
+    // Activity context for retry rows: the latest logged outcome per company.
+    const retryIds = retries.map((c) => c.id);
+    const lastOutcome = new Map<string, string>();
+    if (retryIds.length > 0) {
+      const ints = await db
+        .select({
+          companyId: interaction.companyId,
+          outcome: interaction.outcome,
+          createdAt: interaction.createdAt,
+        })
+        .from(interaction)
+        .where(
+          and(
+            eq(interaction.distributorId, distributorId),
+            inArray(interaction.companyId, retryIds),
+          ),
+        )
+        .orderBy(desc(interaction.createdAt));
+      for (const it of ints) {
+        if (!lastOutcome.has(it.companyId)) lastOutcome.set(it.companyId, it.outcome);
+      }
+    }
+
     type Reminder = {
       id: string;
       name: string;
@@ -202,7 +242,7 @@ export const data = {
       lastTouchDate: string | null;
       dueDate: string;
       note: string | null;
-      kind: "follow_up" | "touch_base";
+      kind: "follow_up" | "no_contact_retry" | "touch_base";
     };
 
     const due: Reminder[] = [];
@@ -220,6 +260,24 @@ export const data = {
         dueDate,
         note: c.followUpNote,
         kind: "follow_up",
+      };
+      if (dueDate <= today) due.push(row);
+      else upcoming.push(row);
+    }
+
+    for (const c of retries) {
+      const dueDate = c.retryDate as string;
+      const last = lastOutcome.get(c.id);
+      const row: Reminder = {
+        id: c.id,
+        name: c.name,
+        city: c.city,
+        industryPrimary: c.industryPrimary,
+        priorityScore: c.priorityScore,
+        lastTouchDate: c.lastTouchDate,
+        dueDate,
+        note: last ? (outcomeMeta(last)?.label ?? null) : null,
+        kind: "no_contact_retry",
       };
       if (dueDate <= today) due.push(row);
       else upcoming.push(row);
@@ -247,8 +305,13 @@ export const data = {
       }
     }
 
-    due.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    upcoming.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    // Promises first, then No-Contact Retries, then customer check-ins; by date
+    // within each.
+    const kindRank = { follow_up: 0, no_contact_retry: 1, touch_base: 2 } as const;
+    const order = (a: Reminder, b: Reminder) =>
+      kindRank[a.kind] - kindRank[b.kind] || a.dueDate.localeCompare(b.dueDate);
+    due.sort(order);
+    upcoming.sort(order);
     return { due, upcoming };
   },
 
@@ -346,43 +409,80 @@ export const data = {
       })
       .returning({ id: interaction.id });
 
-    // Resolve the next-eligible date: explicit follow-up wins; else the
-    // distributor's configured cadence for this outcome (Decision-Maker +
-    // not-interested uses the not-interested setting). A null cadence means no
-    // follow-up — the prospect is parked far out.
     const [distRow] = await db
       .select({ settings: distributor.settings })
       .from(distributor)
       .where(eq(distributor.id, distributorId))
       .limit(1);
-    const cadences = mergeSettings(distRow?.settings).cadence;
-    const cadKey: CadenceKey =
-      input.outcome === "decision_maker" && input.notInterested
-        ? "not_interested"
-        : (input.outcome as CadenceKey);
-    const cadence = cadences[cadKey] ?? null;
-    const nextEligibleDate = input.remove
-      ? null
-      : input.followUpDays != null
-        ? addDaysISO(input.followUpDays)
-        : cadence == null
-          ? addDaysISO(3650)
-          : addDaysISO(cadence);
+    const settings = mergeSettings(distRow?.settings);
+    const cadences = settings.cadence;
+
+    // Decide where this company goes next. The two follow-up types:
+    //  · rep-set promise (followUpDays) → Follow-up Queue, highest priority
+    //  · No-Contact Retry (1st no-contact) → Follow-up Queue, due in retryDays
+    // After a 2nd consecutive no-contact the company is PARKED (a future
+    // next-eligible date) and re-enters the cold queue — at the back — once the
+    // cooldown passes. Reaching a person (gatekeeper / DM) or flagging an
+    // opportunity resets the no-contact counter.
+    const prev = target.noContactAttempts ?? 0;
+    let nextEligibleDate: string | null = null; // null ⇒ eligible now (cold queue)
+    let retryDate: string | null = null;
+    let noContactAttempts = prev;
+    let followUpDate: string | null = null;
+    let followUpNote: string | null = null;
+    let bumpQueue = false; // reset queue position → send to the back on rest/park
+
+    if (input.remove) {
+      noContactAttempts = 0;
+    } else if (input.followUpDays != null) {
+      // Rep-set promise — leaves the cold queue for the Follow-up Queue.
+      followUpDate = addDaysISO(input.followUpDays);
+      followUpNote = note || null;
+      noContactAttempts = 0;
+    } else if (input.opportunity) {
+      // Becomes an opportunity (lifecycle set below) — leaves the cold queue.
+      noContactAttempts = 0;
+    } else if (input.outcome === "no_answer" || input.outcome === "voicemail") {
+      const attempts = prev + 1;
+      if (attempts >= 2) {
+        // Second strike → park, then re-enter the cold queue after the cooldown.
+        nextEligibleDate = addDaysISO(settings.retry.parkDays);
+        noContactAttempts = 0;
+        bumpQueue = true;
+      } else {
+        // First strike → No-Contact Retry in the Follow-up Queue.
+        retryDate = addDaysISO(settings.retry.retryDays);
+        noContactAttempts = 1;
+      }
+    } else if (input.outcome === "gatekeeper" || input.outcome === "decision_maker") {
+      // Reached a person — rests via the outcome's cadence, then re-enters the
+      // cold queue at the back. (A rep who sets a follow-up chip takes the
+      // promise branch above instead.)
+      const cadKey: CadenceKey =
+        input.outcome === "decision_maker" && input.notInterested
+          ? "not_interested"
+          : input.outcome;
+      const cadence = cadences[cadKey] ?? null;
+      nextEligibleDate = cadence == null ? null : addDaysISO(cadence);
+      noContactAttempts = 0;
+      if (nextEligibleDate) bumpQueue = true;
+    } else if (input.outcome === "wrong_number") {
+      // Data-quality outcome — parked far out until the number is corrected; not
+      // a no-contact strike, so the counter is left untouched.
+      nextEligibleDate = addDaysISO(3650);
+      bumpQueue = true;
+    }
 
     const patch: Partial<typeof company.$inferInsert> = {
       lastTouchDate: todayISO(),
       nextEligibleDate,
-      // An explicit follow-up moves the company out of the routine cold queue
-      // and into Follow-up Reminders. Logging without choosing one clears any
-      // prior reminder, so acting on a reminder resolves it.
-      followUpDate: input.remove == null && input.followUpDays != null
-        ? addDaysISO(input.followUpDays)
-        : null,
-      followUpNote: input.remove == null && input.followUpDays != null
-        ? note || null
-        : null,
+      retryDate,
+      noContactAttempts,
+      followUpDate,
+      followUpNote,
       updatedAt: new Date(),
     };
+    if (bumpQueue) patch.queuedAt = new Date();
     if (input.opportunity) patch.lifecycleState = "opp";
     if (input.remove) patch.suppressed = input.remove;
 

@@ -334,11 +334,30 @@ function TeamSection({
 function OutreachSection({ cfg, setCfg }: { cfg: ManagerSettings; setCfg: React.Dispatch<React.SetStateAction<ManagerSettings>> }) {
   const setCad = (key: string, v: number | null) =>
     setCfg((c) => ({ ...c, cadence: { ...c.cadence, [key]: v } }));
+  const setRetry = (patch: Partial<ManagerSettings["retry"]>) =>
+    setCfg((c) => ({ ...c, retry: { ...c.retry, ...patch } }));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 620 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <h2 style={H2}>Outreach cadence</h2>
         <span style={SUB}>How long a company waits before it&rsquo;s eligible again after each outcome. Applies to future scheduling only. A date a prospect asks for always wins.</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <h4 style={H4}>No-contact retries</h4>
+        <span style={SUB}>No Answer and Left Voicemail follow one cycle: a reminder to retry after the delay, then — if the second attempt still makes no contact — the prospect is parked before it re-enters the cold queue.</span>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 90px 40px", gap: 12, alignItems: "center", maxWidth: 420 }}>
+          <span style={{ fontSize: 16 }}>Retry delay</span>
+          <input className="input" type="number" min={1} value={cfg.retry.retryDays}
+            onChange={(e) => setRetry({ retryDays: parseInt(e.target.value) || 1 })}
+            style={{ minHeight: 40, textAlign: "right" }} />
+          <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>days</span>
+          <span style={{ fontSize: 16 }}>Park cooldown</span>
+          <input className="input" type="number" min={1} value={cfg.retry.parkDays}
+            onChange={(e) => setRetry({ parkDays: parseInt(e.target.value) || 1 })}
+            style={{ minHeight: 40, textAlign: "right" }} />
+          <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>days</span>
+        </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {CADENCE_ROWS.map((row) => {

@@ -103,6 +103,12 @@ export function renderDailyEmail(d: DailyEmailData): string {
           <div style="font-size:16px;color:${MUTED};margin-top:6px;line-height:1.5;">${goal}</div>
         </td></tr>
 
+        <tr><td style="padding:0 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            ${followUpBlock}
+          </table>
+        </td></tr>
+
         <tr><td style="padding:22px 20px 0;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
             ${prospectRows || `<tr><td style="font-size:14px;color:${MUTED};padding:7px 0;">No prospects queued.</td></tr>`}
@@ -114,12 +120,6 @@ export function renderDailyEmail(d: DailyEmailData): string {
             <tr><td align="center" bgcolor="${accent}" style="border-radius:4px;">
               <a href="${esc(d.queueUrl)}" style="display:block;padding:16px 24px;font-family:${SERIF};font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Open My Queue</a>
             </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:0 20px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-            ${followUpBlock}
           </table>
         </td></tr>
 

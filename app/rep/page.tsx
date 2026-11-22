@@ -170,6 +170,9 @@ export default async function RepQueuePage() {
           )}
         </section>
 
+        {/* Follow-ups first — promised callbacks and retries are must-do work. */}
+        <FollowUps due={followUps.due} upcoming={followUps.upcoming} />
+
         {/* Cold prospects */}
         <section style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
@@ -187,15 +190,11 @@ export default async function RepQueuePage() {
               city: c.city,
               industryPrimary: c.industryPrimary,
               priorityScore: c.priorityScore,
-              nextEligibleDate: c.nextEligibleDate,
             }))}
             doneIds={doneIds}
             target={progress.target}
-            today={today}
           />
         </section>
-
-        <FollowUps due={followUps.due} upcoming={followUps.upcoming} />
 
         <ZipSearch apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY} />
       </div>
