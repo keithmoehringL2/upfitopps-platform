@@ -1,27 +1,33 @@
-// L2 Admin portal (admin.upfitopps.com). Reserved subdomain, rewritten here by
-// the middleware. Stub only — the real admin app (distributor provisioning,
-// branding, users, CSV import) renders here behind L2-admin authentication.
-export default function AdminHome() {
+import { requireAdmin, getCurrentUser } from "@/lib/auth/dal";
+import { data } from "@/lib/db/gateway";
+import { AdminShell } from "./admin-shell";
+import { DistributorsTable, type DistributorRow } from "./distributors-table";
+
+// L2 Admin portal home — the Distributors list (screen 07). Reserved `admin`
+// subdomain, gated to l2_admin.
+export default async function AdminDistributorsPage() {
+  const ctx = await requireAdmin();
+  const [dists, me] = await Promise.all([
+    data.listDistributorsOverview(ctx),
+    getCurrentUser(),
+  ]);
+
+  const rows: DistributorRow[] = dists.map((d) => ({
+    id: d.id,
+    name: d.name,
+    slug: d.slug,
+    primaryColor: d.primaryColor,
+    status: d.status as DistributorRow["status"],
+    companyCount: d.companyCount,
+    repCount: d.repCount,
+    managerName: d.managerName,
+    programs: d.programs,
+    lastImport: d.lastImport,
+  }));
+
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px" }}>
-      <div
-        style={{
-          fontSize: 12,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--neutral-600)",
-        }}
-      >
-        admin.upfitopps.com
-      </div>
-      <h1 style={{ fontSize: 40, fontWeight: 600, margin: "8px 0 0" }}>
-        L2 Admin Portal
-      </h1>
-      <p style={{ fontSize: 17, color: "var(--neutral-700)" }}>
-        Reserved subdomain resolved. Distributor provisioning, white-label
-        branding, users, manufacturer assignments and CSV import will live here,
-        behind L2-admin authentication.
-      </p>
-    </main>
+    <AdminShell active="distributors" userName={me?.name ?? me?.email}>
+      <DistributorsTable rows={rows} />
+    </AdminShell>
   );
 }

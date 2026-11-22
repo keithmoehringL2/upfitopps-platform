@@ -14,8 +14,9 @@ import {
 import { hashPassword } from "../lib/auth/password";
 import { SEED_IDS as ID } from "./seed-ids";
 
-// Dev-only password for the seeded manager so you can actually sign in.
+// Dev-only passwords for the seeded manager and L2 admin so you can sign in.
 const DEMO_MANAGER_PASSWORD = "upfit1234";
+const DEMO_ADMIN_PASSWORD = "upfit1234";
 
 // Relative-date helpers so the seeded queue always has a realistic mix of
 // due / not-yet-due prospects regardless of when you run it.
@@ -55,12 +56,24 @@ async function main() {
   await db
     .insert(user)
     .values([
-      { id: ID.mgrTruck, email: "manager@truckcolors.test", role: "manager", distributorId: ID.distTruck },
-      { id: ID.rep1, email: "rep1@truckcolors.test", role: "rep", distributorId: ID.distTruck, dailyTarget: 20 },
-      { id: ID.rep2, email: "rep2@demo.test", role: "rep", distributorId: ID.distDemo, dailyTarget: 10 },
-      { id: ID.mfrRegional, email: "regional@adriansteel.test", role: "mfr_regional", manufacturerId: ID.mfr },
+      { id: ID.admin, email: "admin@l2-digital.test", name: "Ryan Patel", role: "l2_admin" },
+      { id: ID.mgrTruck, email: "manager@truckcolors.test", name: "Dana Reyes", role: "manager", distributorId: ID.distTruck },
+      { id: ID.rep1, email: "rep1@truckcolors.test", name: "Alex Rivera", role: "rep", distributorId: ID.distTruck, dailyTarget: 20 },
+      { id: ID.rep2, email: "rep2@demo.test", name: "Sam Lee", role: "rep", distributorId: ID.distDemo, dailyTarget: 10 },
+      { id: ID.mfrRegional, email: "regional@adriansteel.test", name: "Mike Turner", role: "mfr_regional", manufacturerId: ID.mfr },
     ])
     .onConflictDoNothing();
+
+  // Backfill display names on re-seed (onConflictDoNothing above skips existing).
+  for (const [id, name] of [
+    [ID.admin, "Ryan Patel"],
+    [ID.mgrTruck, "Dana Reyes"],
+    [ID.rep1, "Alex Rivera"],
+    [ID.rep2, "Sam Lee"],
+    [ID.mfrRegional, "Mike Turner"],
+  ] as const) {
+    await db.update(user).set({ name }).where(eq(user.id, id));
+  }
 
   await db
     .insert(programDistributor)
@@ -315,6 +328,12 @@ async function main() {
     .set({ passwordHash: await hashPassword(DEMO_MANAGER_PASSWORD) })
     .where(eq(user.id, ID.mgrTruck));
 
+  // L2 admin password (admin.<root>/login).
+  await db
+    .update(user)
+    .set({ passwordHash: await hashPassword(DEMO_ADMIN_PASSWORD) })
+    .where(eq(user.id, ID.admin));
+
   // Demo-friendly daily goal so the queue's progress bar is meaningful.
   await db.update(user).set({ dailyTarget: 8 }).where(eq(user.id, ID.rep1));
 
@@ -372,6 +391,7 @@ async function main() {
   console.log("✓ seed complete");
   console.log(`  demo manager: manager@truckcolors.test / ${DEMO_MANAGER_PASSWORD}`);
   console.log("  demo rep:     rep1@truckcolors.test (passwordless)");
+  console.log(`  demo admin:   admin@l2-digital.test / ${DEMO_ADMIN_PASSWORD} (admin.localhost:3000)`);
   process.exit(0);
 }
 

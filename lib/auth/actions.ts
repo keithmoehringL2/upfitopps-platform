@@ -45,3 +45,41 @@ export async function logout(): Promise<void> {
   await deleteSession();
   redirect("/login");
 }
+
+// L2 Admin password login. Served on the reserved `admin` subdomain, so paths
+// here are host-relative to admin.<root> (the proxy rewrites them to /admin*).
+export async function adminLogin(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!email || !password) {
+    return { error: "Enter your email and password." };
+  }
+
+  const fail = { error: "Invalid email or password." };
+
+  const rows = await getDb()
+    .select()
+    .from(userTable)
+    .where(eq(userTable.email, email))
+    .limit(1);
+  const u = rows[0];
+
+  if (!u || u.role !== "l2_admin" || !u.passwordHash || u.status !== "active") {
+    return fail;
+  }
+  if (!(await verifyPassword(password, u.passwordHash))) {
+    return fail;
+  }
+
+  await createSession(u.id);
+  redirect("/"); // admin.<root>/ → the Distributors list
+}
+
+export async function adminLogout(): Promise<void> {
+  await deleteSession();
+  redirect("/login");
+}

@@ -127,6 +127,9 @@ export const user = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
+    // Display name (manager/rep/portal user). Reps imported before this was
+    // added may be null; the UI falls back to the email.
+    name: text("name"),
     role: roleEnum("role").notNull(),
     // null for L2 admins and manufacturer users
     distributorId: uuid("distributor_id").references(() => distributor.id),

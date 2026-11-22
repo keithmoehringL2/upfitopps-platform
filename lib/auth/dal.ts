@@ -36,3 +36,12 @@ export async function requireRep(): Promise<AuthContext> {
   }
   return ctx;
 }
+
+/** Require a signed-in L2 admin, or redirect to the admin sign-in. */
+export async function requireAdmin(): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "l2_admin") {
+    redirect("/login"); // on admin.<root> this resolves to the admin login
+  }
+  return ctx;
+}

@@ -42,6 +42,7 @@ export async function getSessionUser() {
     .select({
       id: userTable.id,
       email: userTable.email,
+      name: userTable.name,
       role: userTable.role,
       distributorId: userTable.distributorId,
       manufacturerId: userTable.manufacturerId,

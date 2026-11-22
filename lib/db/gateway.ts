@@ -1,6 +1,15 @@
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "./client";
-import { company, distributor, interaction, session, user } from "./schema";
+import {
+  company,
+  distributor,
+  interaction,
+  manufacturer,
+  manufacturerProgram,
+  programDistributor,
+  session,
+  user,
+} from "./schema";
 import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
@@ -17,6 +26,18 @@ function requireManager(ctx: AuthContext): string {
     throw new ForbiddenError("Managers only");
   }
   return distributorId;
+}
+
+/**
+ * L2 admin gate. Unlike the distributor/manager guards, the admin is
+ * deliberately CROSS-TENANT (it provisions and oversees every distributor), so
+ * it has no distributor scope — each admin method is responsible for returning
+ * only aggregate/administrative data, never rep-level prospect content.
+ */
+function requireAdmin(ctx: AuthContext): void {
+  if (ctx.role !== "l2_admin") {
+    throw new ForbiddenError("L2 admin only");
+  }
 }
 
 /**
@@ -88,6 +109,99 @@ export const data = {
       .where(eq(distributor.id, id))
       .limit(1);
     return rows[0] ?? null;
+  },
+
+  // ───────────────────────── L2 Admin (cross-tenant) ───────────────────────
+
+  /**
+   * The Distributors list for the L2 admin portal: every distributor with its
+   * company/rep counts, manager, programs and status. Cross-tenant and
+   * admin-only; returns aggregate/administrative data, never prospect content.
+   */
+  async listDistributorsOverview(ctx: AuthContext) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [dists, companyCounts, users, progs] = await Promise.all([
+      db
+        .select({
+          id: distributor.id,
+          name: distributor.name,
+          slug: distributor.slug,
+          primaryColor: distributor.primaryColor,
+          status: distributor.status,
+          createdAt: distributor.createdAt,
+        })
+        .from(distributor)
+        .orderBy(distributor.name),
+      db
+        .select({ distributorId: company.distributorId, n: sql<number>`count(*)::int` })
+        .from(company)
+        .groupBy(company.distributorId),
+      db
+        .select({
+          distributorId: user.distributorId,
+          role: user.role,
+          name: user.name,
+          email: user.email,
+        })
+        .from(user)
+        .where(and(inArray(user.role, ["manager", "rep"]), eq(user.status, "active"))),
+      db
+        .select({
+          distributorId: programDistributor.distributorId,
+          manufacturerName: manufacturer.name,
+        })
+        .from(programDistributor)
+        .innerJoin(
+          manufacturerProgram,
+          eq(programDistributor.programId, manufacturerProgram.id),
+        )
+        .innerJoin(manufacturer, eq(manufacturerProgram.manufacturerId, manufacturer.id)),
+    ]);
+
+    const companyMap = new Map(companyCounts.map((c) => [c.distributorId, c.n]));
+    return dists.map((d) => {
+      const du = users.filter((u) => u.distributorId === d.id);
+      const manager = du.find((u) => u.role === "manager");
+      const programs = [
+        ...new Set(
+          progs.filter((p) => p.distributorId === d.id).map((p) => p.manufacturerName),
+        ),
+      ];
+      return {
+        id: d.id,
+        name: d.name,
+        slug: d.slug,
+        primaryColor: d.primaryColor,
+        status: d.status,
+        createdAt: d.createdAt,
+        companyCount: companyMap.get(d.id) ?? 0,
+        repCount: du.filter((u) => u.role === "rep").length,
+        managerName: manager?.name ?? manager?.email ?? null,
+        programs,
+        lastImport: null as string | null, // import batches arrive in a later phase
+      };
+    });
+  },
+
+  /** Manufacturers list for the L2 admin (names + user counts). Admin-only. */
+  async listManufacturersOverview(ctx: AuthContext) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [mfrs, mfrUsers] = await Promise.all([
+      db
+        .select({ id: manufacturer.id, name: manufacturer.name, status: manufacturer.status })
+        .from(manufacturer)
+        .orderBy(manufacturer.name),
+      db
+        .select({ manufacturerId: user.manufacturerId })
+        .from(user)
+        .where(inArray(user.role, ["mfr_regional", "mfr_leadership"])),
+    ]);
+    return mfrs.map((m) => ({
+      ...m,
+      userCount: mfrUsers.filter((u) => u.manufacturerId === m.id).length,
+    }));
   },
 
   /**
