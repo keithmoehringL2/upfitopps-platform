@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   auditLog,
@@ -386,6 +386,169 @@ export const data = {
       });
 
       return { id: dist.id, slug, managerId: mgr.id, managerEmail, repCount: reps.length };
+    });
+  },
+
+  /**
+   * Everything the distributor account page needs: the tenant, its manager and
+   * reps, program assignments, the program catalog (for the Programs editor),
+   * headline stats, and the recent audit trail. Admin-only.
+   */
+  async getDistributorAccount(ctx: AuthContext, id: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [dist] = await db.select().from(distributor).where(eq(distributor.id, id)).limit(1);
+    if (!dist) throw new NotFoundError("Distributor not found");
+
+    const [users, assignments, companyCount, audit, catalog] = await Promise.all([
+      db
+        .select({ id: user.id, name: user.name, email: user.email, role: user.role, dailyTarget: user.dailyTarget, status: user.status })
+        .from(user)
+        .where(and(eq(user.distributorId, id), inArray(user.role, ["manager", "rep"])))
+        .orderBy(user.role, user.email),
+      db
+        .select({ programId: programDistributor.programId, cohort: programDistributor.cohort, regionalRepUserId: programDistributor.regionalRepUserId })
+        .from(programDistributor)
+        .where(eq(programDistributor.distributorId, id)),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(company)
+        .where(eq(company.distributorId, id)),
+      db
+        .select({ action: auditLog.action, createdAt: auditLog.createdAt, actorName: user.name, actorEmail: user.email })
+        .from(auditLog)
+        .leftJoin(user, eq(auditLog.actorUserId, user.id))
+        .where(eq(auditLog.distributorId, id))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(10),
+      this.listProgramCatalog(ctx),
+    ]);
+
+    const manager = users.find((u) => u.role === "manager") ?? null;
+    const reps = users.filter((u) => u.role === "rep");
+    return {
+      distributor: {
+        id: dist.id, name: dist.name, slug: dist.slug, status: dist.status,
+        primaryColor: dist.primaryColor, secondaryColor: dist.secondaryColor, logoUrl: dist.logoUrl,
+      },
+      manager,
+      reps,
+      assignments,
+      catalog,
+      stats: {
+        companyCount: companyCount[0]?.n ?? 0,
+        repCount: reps.length,
+        programCount: assignments.length,
+      },
+      audit: audit.map((a) => ({
+        action: a.action,
+        createdAt: a.createdAt,
+        actor: a.actorName ?? a.actorEmail ?? "System",
+      })),
+    };
+  },
+
+  /** Change a distributor's lifecycle status (immediate), with an audit entry. */
+  async updateDistributorStatus(
+    ctx: AuthContext,
+    id: string,
+    status: "onboarding" | "active" | "paused" | "disabled",
+  ) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [before] = await db.select({ status: distributor.status }).from(distributor).where(eq(distributor.id, id)).limit(1);
+    if (!before) throw new NotFoundError("Distributor not found");
+    await db.update(distributor).set({ status, updatedAt: new Date() }).where(eq(distributor.id, id));
+    await writeAudit(db, {
+      distributorId: id,
+      actorUserId: ctx.userId,
+      action: "distributor.status_changed",
+      targetType: "distributor",
+      targetId: id,
+      before: { status: before.status },
+      after: { status },
+    });
+  },
+
+  /**
+   * Save the account draft (branding + manager + reps + program assignments) in
+   * one transaction, with an audit entry. Reps with an id are updated (status
+   * included, so a removed rep is soft-disabled); reps without an id are
+   * created. Program assignments are replaced with the desired set. Admin-only.
+   */
+  async saveDistributorAccount(
+    ctx: AuthContext,
+    id: string,
+    payload: {
+      primaryColor: string;
+      secondaryColor?: string | null;
+      logoUrl?: string | null;
+      manager: { id: string; name: string; email: string } | null;
+      reps: { id?: string; name: string; email: string; dailyTarget: number; status: "active" | "paused" | "disabled" }[];
+      programs: { programId: string; cohort?: string | null; regionalRepUserId?: string | null }[];
+    },
+  ) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [exists] = await db.select({ id: distributor.id }).from(distributor).where(eq(distributor.id, id)).limit(1);
+    if (!exists) throw new NotFoundError("Distributor not found");
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(distributor)
+        .set({
+          primaryColor: payload.primaryColor,
+          secondaryColor: payload.secondaryColor ?? null,
+          logoUrl: payload.logoUrl ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(distributor.id, id));
+
+      if (payload.manager?.id) {
+        await tx
+          .update(user)
+          .set({ name: payload.manager.name.trim() || null, email: payload.manager.email.trim().toLowerCase(), updatedAt: new Date() })
+          .where(and(eq(user.id, payload.manager.id), eq(user.distributorId, id), eq(user.role, "manager")));
+      }
+
+      for (const r of payload.reps) {
+        const email = r.email.trim().toLowerCase();
+        if (r.id) {
+          await tx
+            .update(user)
+            .set({ name: r.name.trim() || null, email, dailyTarget: Math.max(1, r.dailyTarget || 1), status: r.status, updatedAt: new Date() })
+            .where(and(eq(user.id, r.id), eq(user.distributorId, id), eq(user.role, "rep")));
+        } else if (email && /^\S+@\S+\.\S+$/.test(email)) {
+          await tx.insert(user).values({ email, name: r.name.trim() || null, role: "rep", distributorId: id, dailyTarget: Math.max(1, r.dailyTarget || 1), status: "active" });
+        }
+      }
+
+      const keepProgramIds = payload.programs.map((p) => p.programId);
+      if (keepProgramIds.length > 0) {
+        await tx
+          .delete(programDistributor)
+          .where(and(eq(programDistributor.distributorId, id), notInArray(programDistributor.programId, keepProgramIds)));
+        for (const p of payload.programs) {
+          await tx
+            .insert(programDistributor)
+            .values({ programId: p.programId, distributorId: id, regionalRepUserId: p.regionalRepUserId || null, cohort: p.cohort?.trim() || null })
+            .onConflictDoUpdate({
+              target: [programDistributor.programId, programDistributor.distributorId],
+              set: { regionalRepUserId: p.regionalRepUserId || null, cohort: p.cohort?.trim() || null },
+            });
+        }
+      } else {
+        await tx.delete(programDistributor).where(eq(programDistributor.distributorId, id));
+      }
+
+      await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
+        distributorId: id,
+        actorUserId: ctx.userId,
+        action: "distributor.updated",
+        targetType: "distributor",
+        targetId: id,
+        after: { reps: payload.reps.length, programs: payload.programs.length },
+      });
     });
   },
 

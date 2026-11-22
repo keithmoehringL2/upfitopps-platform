@@ -15,20 +15,20 @@ const SW1 = ["#c8102e", "#0088b0", "#1d6b3c", "#2a3f9d", "#d35400", "#2d2b2b"];
 const SW2 = ["#d6006c", "#edbb00", "#7d3c98", "#e67e22", "#0088b0", "#605d5d"];
 const STEPS = ["Account", "Branding", "Users", "Program", "Review"] as const;
 
-interface CatalogProgram {
+export interface CatalogProgram {
   id: string;
   name: string;
   manufacturerName: string;
   manufacturerId: string;
   regionals: { id: string; name: string | null; email: string }[];
 }
-interface ProgDraft { on: boolean; cohort: string; regionalRepUserId: string }
-interface RepDraft { name: string; email: string; target: number }
+export interface ProgDraft { on: boolean; cohort: string; regionalRepUserId: string }
+export interface RepDraft { name: string; email: string; target: number }
 
 type SlugState = "empty" | "checking" | "ok" | "bad_format" | "reserved" | "taken";
 
-const emailOk = (s: string) => /^\S+@\S+\.\S+$/.test(s.trim());
-const hexOk = (s: string) => /^#[0-9a-fA-F]{6}$/.test(s.trim());
+export const emailOk = (s: string) => /^\S+@\S+\.\S+$/.test(s.trim());
+export const hexOk = (s: string) => /^#[0-9a-fA-F]{6}$/.test(s.trim());
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/&/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 30);
@@ -258,7 +258,7 @@ function StepAccount({ name, onName, slug, onSlug, slugState }: {
   );
 }
 
-function StepBranding({ name, color, setColor, color2, setColor2, logoUrl, logoBusy, logoError, onLogo, onRemoveLogo }: {
+export function StepBranding({ name, color, setColor, color2, setColor2, logoUrl, logoBusy, logoError, onLogo, onRemoveLogo }: {
   name: string; color: string; setColor: (v: string) => void; color2: string; setColor2: (v: string) => void;
   logoUrl: string | null; logoBusy: boolean; logoError: string; onLogo: (f: File | null) => void; onRemoveLogo: () => void;
 }) {
@@ -336,7 +336,7 @@ function ColorField({ label, value, setValue, swatches, note }: {
   );
 }
 
-function StepUsers({ mgr, setMgr, reps, setReps }: {
+export function StepUsers({ mgr, setMgr, reps, setReps }: {
   mgr: { name: string; email: string }; setMgr: (v: { name: string; email: string }) => void;
   reps: RepDraft[]; setReps: React.Dispatch<React.SetStateAction<RepDraft[]>>;
 }) {
@@ -369,7 +369,7 @@ function StepUsers({ mgr, setMgr, reps, setReps }: {
   );
 }
 
-function StepPrograms({ catalog, progs, setProgs }: {
+export function StepPrograms({ catalog, progs, setProgs }: {
   catalog: CatalogProgram[]; progs: Record<string, ProgDraft>; setProgs: React.Dispatch<React.SetStateAction<Record<string, ProgDraft>>>;
 }) {
   const patch = (id: string, p: Partial<ProgDraft>) => setProgs((cur) => ({ ...cur, [id]: { ...cur[id], ...p } }));

@@ -105,3 +105,46 @@ export async function createDistributorAction(
     setupLink: IS_DEV ? setupLink : undefined,
   };
 }
+
+/** Change a distributor's status from the account Overview tab. */
+export async function updateStatusAction(
+  id: string,
+  status: "onboarding" | "active" | "paused" | "disabled",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.updateDistributorStatus(ctx, id, status);
+    revalidatePath(`/distributors/${id}`);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update status." };
+  }
+}
+
+export interface SaveAccountPayload {
+  primaryColor: string;
+  secondaryColor?: string | null;
+  logoUrl?: string | null;
+  manager: { id: string; name: string; email: string } | null;
+  reps: { id?: string; name: string; email: string; dailyTarget: number; status: "active" | "paused" | "disabled" }[];
+  programs: { programId: string; cohort?: string | null; regionalRepUserId?: string | null }[];
+}
+
+/** Save the account draft (branding + users + programs). */
+export async function saveAccountAction(
+  id: string,
+  payload: SaveAccountPayload,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.saveDistributorAccount(ctx, id, payload);
+    revalidatePath(`/distributors/${id}`);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save changes." };
+  }
+}
