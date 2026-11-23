@@ -18,6 +18,7 @@ const STEPS = ["Account", "Branding", "Users", "Program", "Review"] as const;
 export interface CatalogProgram {
   id: string;
   name: string;
+  code: string | null;
   manufacturerName: string;
   manufacturerId: string;
   regionals: { id: string; name: string | null; email: string }[];

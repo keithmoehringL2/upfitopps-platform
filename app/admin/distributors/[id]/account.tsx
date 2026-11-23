@@ -10,7 +10,7 @@ import {
   type CatalogProgram,
   type ProgDraft,
 } from "../new/wizard";
-import { uploadLogoAction, saveAccountAction, updateStatusAction } from "@/lib/admin/actions";
+import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction } from "@/lib/admin/actions";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
 
@@ -22,7 +22,8 @@ interface AccountData {
   reps: { id: string; name: string | null; email: string; dailyTarget: number | null; status: Status }[];
   assignments: { programId: string; cohort: string | null; regionalRepUserId: string | null }[];
   catalog: CatalogProgram[];
-  stats: { companyCount: number; repCount: number; programCount: number };
+  imports: { id: string; filename: string; counts: { rows: number; created: number; updated: number; skipped: number }; status: "committed" | "rolled_back"; createdAt: string | Date; by: string }[];
+  stats: { companyCount: number; repCount: number; programCount: number; lastImport: string | Date | null };
   audit: { action: string; createdAt: string | Date; actor: string }[];
 }
 
@@ -48,6 +49,8 @@ const ACTION_LABEL: Record<string, string> = {
   "distributor.created": "Account created",
   "distributor.updated": "Account updated",
   "distributor.status_changed": "Status changed",
+  "import.committed": "CSV import committed",
+  "import.rolled_back": "CSV import rolled back",
 };
 
 export function DistributorAccount({ account }: { account: AccountData }) {
@@ -170,7 +173,7 @@ export function DistributorAccount({ account }: { account: AccountData }) {
       )}
       {tab === "users" && <UsersEditor mgr={mgr} setMgr={setMgr} reps={reps} setReps={setReps} />}
       {tab === "programs" && <StepPrograms catalog={account.catalog} progs={progs} setProgs={setProgs} />}
-      {tab === "imports" && <ImportsTab id={d.id} />}
+      {tab === "imports" && <ImportsTab id={d.id} imports={account.imports} />}
 
       {showSaveBar && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end", paddingTop: 12, borderTop: "1px solid var(--divider)" }}>
@@ -186,14 +189,18 @@ export function DistributorAccount({ account }: { account: AccountData }) {
 function Overview({ account, status, statusBusy, onStatus }: {
   account: AccountData; status: Status; statusBusy: boolean; onStatus: (s: Status) => void;
 }) {
+  const lastImport = account.stats.lastImport
+    ? new Date(account.stats.lastImport).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "—";
   const tiles = [
     { label: "Companies", value: account.stats.companyCount.toLocaleString(), sub: "In the repository" },
     { label: "Sales reps", value: String(account.stats.repCount), sub: account.manager ? `Manager: ${account.manager.name ?? account.manager.email}` : "No manager" },
     { label: "Programs", value: String(account.stats.programCount), sub: account.assignments.length ? "Assigned" : "None yet" },
+    { label: "Last import", value: lastImport, sub: account.imports.length ? `${account.imports.length} total` : "No imports yet" },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 20, maxWidth: 720 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 20, maxWidth: 820 }}>
         {tiles.map((t) => (
           <div key={t.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--neutral-700)" }}>{t.label}</span>
@@ -275,9 +282,21 @@ function UsersEditor({ mgr, setMgr, reps, setReps }: {
   );
 }
 
-function ImportsTab({ id }: { id: string }) {
+function ImportsTab({ id, imports }: { id: string; imports: AccountData["imports"] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+
+  async function doRollback(batchId: string) {
+    setBusy(batchId); setNote("");
+    const res = await rollbackImportAction(batchId, id);
+    setBusy(null);
+    if (res.ok) { setNote("Import rolled back."); router.refresh(); }
+    else setNote(res.error);
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 620 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
         <div>
           <h3 style={{ margin: 0, color: "var(--accent-700)", fontSize: 22, fontWeight: 600 }}>CSV imports</h3>
@@ -287,12 +306,40 @@ function ImportsTab({ id }: { id: string }) {
           <i className="ph-duotone ph-file-csv" /><span>New CSV import</span>
         </Link>
       </div>
-      <div style={{ padding: "20px 0" }}>
-        <p style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>No companies yet</p>
-        <p style={{ fontSize: 14, color: "var(--neutral-700)", margin: "4px 0 0" }}>
-          Import the prepared CSV to load this distributor’s companies. Nothing appears in rep queues until companies are assigned.
-        </p>
-      </div>
+      {note && <div style={{ fontSize: 14, color: "var(--accent-700)" }}>{note}</div>}
+      {imports.length === 0 ? (
+        <div style={{ padding: "20px 0" }}>
+          <p style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>No companies yet</p>
+          <p style={{ fontSize: 14, color: "var(--neutral-700)", margin: "4px 0 0" }}>
+            Import the prepared CSV to load this distributor’s companies. Nothing appears in rep queues until companies are assigned.
+          </p>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="table" style={{ minWidth: 760 }}>
+            <thead><tr><th>Import</th><th>File</th><th style={{ textAlign: "right" }}>Created</th><th style={{ textAlign: "right" }}>Updated</th><th style={{ textAlign: "right" }}>Skipped</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {imports.map((im) => (
+                <tr key={im.id}>
+                  <td style={{ fontSize: 13, color: "var(--neutral-700)" }}>{new Date(im.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}<div style={{ fontSize: 12 }}>by {im.by}</div></td>
+                  <td style={{ fontFamily: "monospace", fontSize: 13 }}>{im.filename}</td>
+                  <td style={{ textAlign: "right" }}>{im.counts.created}</td>
+                  <td style={{ textAlign: "right" }}>{im.counts.updated}</td>
+                  <td style={{ textAlign: "right" }}>{im.counts.skipped}</td>
+                  <td><span className={`tag ${im.status === "committed" ? "tag-accent" : "tag-neutral"}`}>{im.status === "committed" ? "Committed" : "Rolled back"}</span></td>
+                  <td>
+                    {im.status === "committed" && (
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: 13, color: "var(--color-accent-2-700, #aa0b56)" }} disabled={busy === im.id} onClick={() => doRollback(im.id)}>
+                        {busy === im.id ? "Rolling back…" : "Roll back"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

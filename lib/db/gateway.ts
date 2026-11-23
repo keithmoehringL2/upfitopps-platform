@@ -325,6 +325,7 @@ export const data = {
         .select({
           id: manufacturerProgram.id,
           name: manufacturerProgram.name,
+          code: manufacturerProgram.code,
           manufacturerId: manufacturerProgram.manufacturerId,
           manufacturerName: manufacturer.name,
         })
