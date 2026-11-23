@@ -206,3 +206,49 @@ export async function rollbackImportAction(
     return { ok: false, error: e instanceof Error ? e.message : "Could not roll back the import." };
   }
 }
+
+// ───────────────────────── Manufacturers ─────────────────────────────────
+
+type AdminResult = { ok: true } | { ok: false; error: string };
+
+export async function createManufacturerAction(name: string): Promise<AdminResult> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.createManufacturer(ctx, name);
+    revalidatePath("/manufacturers");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add the manufacturer." };
+  }
+}
+
+export async function addManufacturerUserAction(
+  manufacturerId: string,
+  input: { name: string; email: string; role: "mfr_regional" | "mfr_leadership" },
+): Promise<AdminResult> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.createManufacturerUser(ctx, manufacturerId, input);
+    revalidatePath("/manufacturers");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add the user." };
+  }
+}
+
+export async function setAssignmentRepAction(
+  programDistributorId: string,
+  regionalRepUserId: string | null,
+): Promise<AdminResult> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.setProgramAssignmentRep(ctx, programDistributorId, regionalRepUserId);
+    revalidatePath("/manufacturers");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update the assignment." };
+  }
+}

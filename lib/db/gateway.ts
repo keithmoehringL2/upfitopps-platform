@@ -298,6 +298,113 @@ export const data = {
     }));
   },
 
+  /**
+   * Full manufacturer management data for the admin: each manufacturer with its
+   * portal users, its regional users (for assignment pickers), and the
+   * distributor program assignments under it. Admin-only.
+   */
+  async getManufacturersDetail(ctx: AuthContext) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [mfrs, mUsers, assigns] = await Promise.all([
+      db.select({ id: manufacturer.id, name: manufacturer.name, status: manufacturer.status }).from(manufacturer).orderBy(manufacturer.name),
+      db
+        .select({ id: user.id, name: user.name, email: user.email, role: user.role, manufacturerId: user.manufacturerId })
+        .from(user)
+        .where(inArray(user.role, ["mfr_regional", "mfr_leadership"]))
+        .orderBy(user.email),
+      db
+        .select({
+          pdId: programDistributor.id,
+          distributorName: distributor.name,
+          cohort: programDistributor.cohort,
+          regionalRepUserId: programDistributor.regionalRepUserId,
+          programName: manufacturerProgram.name,
+          manufacturerId: manufacturerProgram.manufacturerId,
+        })
+        .from(programDistributor)
+        .innerJoin(manufacturerProgram, eq(programDistributor.programId, manufacturerProgram.id))
+        .innerJoin(distributor, eq(programDistributor.distributorId, distributor.id))
+        .orderBy(distributor.name),
+    ]);
+
+    return mfrs.map((m) => {
+      const users = mUsers.filter((u) => u.manufacturerId === m.id);
+      return {
+        id: m.id,
+        name: m.name,
+        status: m.status,
+        users: users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+        regionals: users.filter((u) => u.role === "mfr_regional").map((u) => ({ id: u.id, name: u.name, email: u.email })),
+        assignments: assigns
+          .filter((a) => a.manufacturerId === m.id)
+          .map((a) => ({ pdId: a.pdId, distributorName: a.distributorName, cohort: a.cohort, programName: a.programName, regionalRepUserId: a.regionalRepUserId })),
+      };
+    });
+  },
+
+  /** Create a manufacturer and its default VIO program. Admin-only. */
+  async createManufacturer(ctx: AuthContext, name: string) {
+    requireAdmin(ctx);
+    const n = name.trim();
+    if (!n) throw new ForbiddenError("A manufacturer name is required");
+    const db = getDb();
+    return db.transaction(async (tx) => {
+      const [m] = await tx.insert(manufacturer).values({ name: n }).returning({ id: manufacturer.id });
+      // A default program so the manufacturer can be attached to distributors.
+      // (Its import source code is set up separately.)
+      await tx.insert(manufacturerProgram).values({ manufacturerId: m.id, name: `${n} VIO` });
+      await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
+        actorUserId: ctx.userId,
+        action: "manufacturer.created",
+        targetType: "manufacturer",
+        targetId: m.id,
+        after: { name: n },
+      });
+      return { id: m.id };
+    });
+  },
+
+  /** Add a portal user (regional or leadership) to a manufacturer. Admin-only. */
+  async createManufacturerUser(
+    ctx: AuthContext,
+    manufacturerId: string,
+    input: { name: string; email: string; role: "mfr_regional" | "mfr_leadership" },
+  ) {
+    requireAdmin(ctx);
+    const email = input.email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw new ForbiddenError("A valid email is required");
+    if (input.role !== "mfr_regional" && input.role !== "mfr_leadership") throw new ForbiddenError("Invalid role");
+    const db = getDb();
+    const [m] = await db.select({ id: manufacturer.id }).from(manufacturer).where(eq(manufacturer.id, manufacturerId)).limit(1);
+    if (!m) throw new NotFoundError("Manufacturer not found");
+    await db.insert(user).values({ email, name: input.name.trim() || null, role: input.role, manufacturerId, status: "active" });
+    await writeAudit(db, {
+      actorUserId: ctx.userId,
+      action: "manufacturer.user_added",
+      targetType: "manufacturer",
+      targetId: manufacturerId,
+      after: { email, role: input.role },
+    });
+  },
+
+  /** Set (or clear) the regional rep on a program↔distributor assignment. */
+  async setProgramAssignmentRep(ctx: AuthContext, programDistributorId: string, regionalRepUserId: string | null) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [row] = await db.select({ distributorId: programDistributor.distributorId }).from(programDistributor).where(eq(programDistributor.id, programDistributorId)).limit(1);
+    if (!row) throw new NotFoundError("Assignment not found");
+    await db.update(programDistributor).set({ regionalRepUserId: regionalRepUserId || null }).where(eq(programDistributor.id, programDistributorId));
+    await writeAudit(db, {
+      distributorId: row.distributorId,
+      actorUserId: ctx.userId,
+      action: "program.rep_assigned",
+      targetType: "program_distributor",
+      targetId: programDistributorId,
+      after: { regionalRepUserId: regionalRepUserId || null },
+    });
+  },
+
   /** Live subdomain availability for the New Distributor wizard. Admin-only. */
   async checkSlug(ctx: AuthContext, slugRaw: string): Promise<{ state: SlugState }> {
     requireAdmin(ctx);
