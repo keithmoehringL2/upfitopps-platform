@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createManufacturerAction, addManufacturerUserAction, setAssignmentRepAction } from "@/lib/admin/actions";
+import { createManufacturerAction, addManufacturerUserAction, setAssignmentRepAction, manufacturerSetupLinkAction } from "@/lib/admin/actions";
 
 type Role = "mfr_regional" | "mfr_leadership";
 interface Manufacturer {
@@ -22,6 +22,15 @@ export function ManufacturersManager({ manufacturers }: { manufacturers: Manufac
   const [note, setNote] = useState("");
   const [newName, setNewName] = useState("");
   const [forms, setForms] = useState<Record<string, { name: string; email: string; role: Role }>>({});
+  const [links, setLinks] = useState<Record<string, string>>({});
+
+  function getSetupLink(userId: string) {
+    startBusy(async () => {
+      const res = await manufacturerSetupLinkAction(userId);
+      if (res.ok) setLinks((l) => ({ ...l, [userId]: res.link }));
+      else setNote(res.error);
+    });
+  }
 
   const formFor = (id: string) => forms[id] ?? { name: "", email: "", role: "mfr_regional" as Role };
   const setForm = (id: string, patch: Partial<{ name: string; email: string; role: Role }>) =>
@@ -93,14 +102,20 @@ export function ManufacturersManager({ manufacturers }: { manufacturers: Manufac
                   <p style={{ fontSize: 14, color: "var(--neutral-700)" }}>No users yet.</p>
                 ) : (
                   m.users.map((u) => (
-                    <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>{u.name ?? u.email}</span>
-                        <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>{u.email}</span>
+                    <div key={u.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>{u.name ?? u.email}</span>
+                          <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>{u.email}</span>
+                        </div>
+                        <span className={`tag ${u.role === "mfr_leadership" ? "tag-accent" : "tag-neutral"}`} style={{ marginLeft: "auto" }}>
+                          {u.role === "mfr_leadership" ? "Leadership" : "Regional rep"}
+                        </span>
+                        <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} disabled={busy} onClick={() => getSetupLink(u.id)}>Setup link</button>
                       </div>
-                      <span className={`tag ${u.role === "mfr_leadership" ? "tag-accent" : "tag-neutral"}`} style={{ marginLeft: "auto" }}>
-                        {u.role === "mfr_leadership" ? "Leadership" : "Regional rep"}
-                      </span>
+                      {links[u.id] && (
+                        <a href={links[u.id]} style={{ fontSize: 12, color: "var(--accent-700)", wordBreak: "break-all" }}>{links[u.id]}</a>
+                      )}
                     </div>
                   ))
                 )}
