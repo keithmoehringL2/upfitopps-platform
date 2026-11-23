@@ -4,6 +4,8 @@ import {
   auditLog,
   company,
   distributor,
+  importBatch,
+  importChange,
   interaction,
   manufacturer,
   manufacturerProgram,
@@ -12,6 +14,12 @@ import {
   user,
 } from "./schema";
 import { RESERVED_SUBDOMAINS } from "../tenancy/reserved-slugs";
+import { parseCsv } from "../import/csv";
+import {
+  runDryRun,
+  type DryRunContext,
+  type ExistingCompany,
+} from "../import/engine";
 import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
@@ -74,6 +82,56 @@ async function writeAudit(
     before: (entry.before ?? null) as never,
     after: (entry.after ?? null) as never,
   });
+}
+
+/** Fetch the distributor's current data the import dry-run validates against. */
+async function buildImportContext(distributorId: string): Promise<DryRunContext> {
+  const db = getDb();
+  const [existing, reps, progs] = await Promise.all([
+    db
+      .select({ id: company.id, ext: company.externalImportId, name: company.name, address: company.address, ownerUserId: company.ownerUserId, decisionMaker: company.decisionMaker, followUpDate: company.followUpDate })
+      .from(company)
+      .where(and(eq(company.distributorId, distributorId), isNotNull(company.externalImportId))),
+    db
+      .select({ email: user.email, id: user.id })
+      .from(user)
+      .where(and(eq(user.distributorId, distributorId), eq(user.role, "rep"), eq(user.status, "active"))),
+    db
+      .select({ code: manufacturerProgram.code, id: manufacturerProgram.id })
+      .from(programDistributor)
+      .innerJoin(manufacturerProgram, eq(programDistributor.programId, manufacturerProgram.id))
+      .where(and(eq(programDistributor.distributorId, distributorId), isNotNull(manufacturerProgram.code))),
+  ]);
+
+  const existingByExtId = new Map<string, ExistingCompany>();
+  const nameAddrToExtIds = new Map<string, string[]>();
+  for (const c of existing) {
+    const ext = c.ext as string;
+    existingByExtId.set(ext, { id: c.id, name: c.name, address: c.address, ownerUserId: c.ownerUserId, hasDm: c.decisionMaker != null, hasFollowUp: c.followUpDate != null });
+    const key = `${c.name.trim().toLowerCase()}|${(c.address ?? "").trim().toLowerCase()}`;
+    nameAddrToExtIds.set(key, [...(nameAddrToExtIds.get(key) ?? []), ext]);
+  }
+  return {
+    existingByExtId,
+    nameAddrToExtIds,
+    repEmailToId: new Map(reps.map((r) => [r.email.toLowerCase(), r.id])),
+    programCodeToId: new Map(progs.filter((p) => p.code).map((p) => [p.code as string, p.id])),
+  };
+}
+
+/** The company columns an import writes (and a rollback restores). */
+function descriptiveFields(f: {
+  name: string; address: string | null; city: string | null; state: string | null; zip: string | null;
+  phone: string | null; website: string | null; industryPrimary: string | null; industrySub: string | null;
+  totalVehicles: number | null; truckCount: number | null; vanCount: number | null; fleetMix: unknown;
+  priorityScore: string | null; priorityExplanation: string | null; touchIntervalDays: number | null;
+}) {
+  return {
+    name: f.name, address: f.address, city: f.city, state: f.state, zip: f.zip,
+    phone: f.phone, website: f.website, industryPrimary: f.industryPrimary, industrySub: f.industrySub,
+    totalVehicles: f.totalVehicles, truckCount: f.truckCount, vanCount: f.vanCount, fleetMix: f.fleetMix,
+    priorityScore: f.priorityScore, priorityExplanation: f.priorityExplanation, touchIntervalDays: f.touchIntervalDays,
+  };
 }
 
 /**
@@ -400,7 +458,7 @@ export const data = {
     const [dist] = await db.select().from(distributor).where(eq(distributor.id, id)).limit(1);
     if (!dist) throw new NotFoundError("Distributor not found");
 
-    const [users, assignments, companyCount, audit, catalog] = await Promise.all([
+    const [users, assignments, companyCount, audit, catalog, imports] = await Promise.all([
       db
         .select({ id: user.id, name: user.name, email: user.email, role: user.role, dailyTarget: user.dailyTarget, status: user.status })
         .from(user)
@@ -422,6 +480,7 @@ export const data = {
         .orderBy(desc(auditLog.createdAt))
         .limit(10),
       this.listProgramCatalog(ctx),
+      this.listImports(ctx, id),
     ]);
 
     const manager = users.find((u) => u.role === "manager") ?? null;
@@ -435,10 +494,12 @@ export const data = {
       reps,
       assignments,
       catalog,
+      imports,
       stats: {
         companyCount: companyCount[0]?.n ?? 0,
         repCount: reps.length,
         programCount: assignments.length,
+        lastImport: imports[0]?.createdAt ?? null,
       },
       audit: audit.map((a) => ({
         action: a.action,
@@ -550,6 +611,136 @@ export const data = {
         after: { reps: payload.reps.length, programs: payload.programs.length },
       });
     });
+  },
+
+  // ───────────────────────── L2 Admin: CSV import ──────────────────────────
+
+  /** Dry-run: validate a mapped CSV against the distributor's current data. */
+  async previewImport(ctx: AuthContext, distributorId: string, csvText: string, columnMap: Record<string, string>) {
+    requireAdmin(ctx);
+    const dctx = await buildImportContext(distributorId);
+    const dry = runDryRun(parseCsv(csvText), columnMap, dctx);
+    return { counts: dry.counts, errors: dry.errors, protectedCounts: dry.protectedCounts };
+  },
+
+  /**
+   * Commit a mapped CSV: insert new companies and update matching ones (by
+   * external_id, scoped to the distributor). Error rows are skipped. Protected
+   * local fields are preserved — owner is overwritten from the file only when
+   * `overrides.owner` is set; confirmed DM, follow-ups, suppression/DNC,
+   * activity, opportunities and quotes are never touched; source program
+   * attribution is immutable. Records an import batch (with pre-import snapshots)
+   * for rollback, and an audit entry.
+   */
+  async commitImport(
+    ctx: AuthContext,
+    distributorId: string,
+    csvText: string,
+    columnMap: Record<string, string>,
+    overrides: { owner?: boolean },
+    filename: string,
+  ) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const dctx = await buildImportContext(distributorId);
+    const dry = runDryRun(parseCsv(csvText), columnMap, dctx);
+
+    const updateExtIds = dry.records.filter((r) => r.isUpdate).map((r) => r.externalId);
+    const existingFull = new Map<string, typeof company.$inferSelect>();
+    if (updateExtIds.length > 0) {
+      const fulls = await db.select().from(company).where(and(eq(company.distributorId, distributorId), inArray(company.externalImportId, updateExtIds)));
+      for (const f of fulls) if (f.externalImportId) existingFull.set(f.externalImportId, f);
+    }
+
+    const batchId = await db.transaction(async (tx) => {
+      const [batch] = await tx
+        .insert(importBatch)
+        .values({ distributorId, uploadedByUserId: ctx.userId, filename, columnMap, counts: dry.counts, overrides })
+        .returning({ id: importBatch.id });
+
+      const changeRows: (typeof importChange.$inferInsert)[] = [];
+      for (const rec of dry.records) {
+        if (!rec.isUpdate) {
+          const [ins] = await tx
+            .insert(company)
+            .values({ distributorId, externalImportId: rec.externalId, ...descriptiveFields(rec.fields), ownerUserId: rec.ownerUserId, sourceProgramId: rec.sourceProgramId })
+            .returning({ id: company.id });
+          changeRows.push({ importBatchId: batch.id, companyId: ins.id, wasInsert: true, before: null });
+        } else {
+          const ex = existingFull.get(rec.externalId)!;
+          const before = { ...descriptiveFields(ex), ownerUserId: ex.ownerUserId };
+          const set: Partial<typeof company.$inferInsert> = { ...descriptiveFields(rec.fields), updatedAt: new Date() };
+          if (overrides.owner) set.ownerUserId = rec.ownerUserId;
+          await tx.update(company).set(set).where(eq(company.id, ex.id));
+          changeRows.push({ importBatchId: batch.id, companyId: ex.id, wasInsert: false, before: before as never });
+        }
+      }
+      if (changeRows.length > 0) await tx.insert(importChange).values(changeRows);
+
+      await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
+        distributorId,
+        actorUserId: ctx.userId,
+        action: "import.committed",
+        targetType: "import_batch",
+        targetId: batch.id,
+        after: { filename, ...dry.counts, overrides },
+      });
+      return batch.id;
+    });
+
+    return { batchId, counts: dry.counts };
+  },
+
+  /** Reverse a committed import: delete created companies, restore updated ones. */
+  async rollbackImport(ctx: AuthContext, batchId: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [batch] = await db.select().from(importBatch).where(eq(importBatch.id, batchId)).limit(1);
+    if (!batch) throw new NotFoundError("Import not found");
+    if (batch.status !== "committed") throw new ForbiddenError("This import was already rolled back");
+    const changes = await db.select().from(importChange).where(eq(importChange.importBatchId, batchId));
+
+    await db.transaction(async (tx) => {
+      // Remove change rows first so inserted companies can be deleted (FK).
+      await tx.delete(importChange).where(eq(importChange.importBatchId, batchId));
+      for (const ch of changes) {
+        if (ch.wasInsert) {
+          await tx.delete(company).where(eq(company.id, ch.companyId));
+        } else if (ch.before) {
+          await tx.update(company).set({ ...(ch.before as Record<string, unknown>), updatedAt: new Date() }).where(eq(company.id, ch.companyId));
+        }
+      }
+      await tx.update(importBatch).set({ status: "rolled_back", updatedAt: new Date() }).where(eq(importBatch.id, batchId));
+      await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
+        distributorId: batch.distributorId,
+        actorUserId: ctx.userId,
+        action: "import.rolled_back",
+        targetType: "import_batch",
+        targetId: batchId,
+        before: batch.counts,
+      });
+    });
+    return { ok: true as const };
+  },
+
+  /** Import history for a distributor's account Imports tab. */
+  async listImports(ctx: AuthContext, distributorId: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const rows = await db
+      .select({ id: importBatch.id, filename: importBatch.filename, counts: importBatch.counts, status: importBatch.status, createdAt: importBatch.createdAt, byName: user.name, byEmail: user.email })
+      .from(importBatch)
+      .leftJoin(user, eq(importBatch.uploadedByUserId, user.id))
+      .where(eq(importBatch.distributorId, distributorId))
+      .orderBy(desc(importBatch.createdAt));
+    return rows.map((r) => ({
+      id: r.id,
+      filename: r.filename,
+      counts: r.counts as { rows: number; created: number; updated: number; skipped: number },
+      status: r.status,
+      createdAt: r.createdAt,
+      by: r.byName ?? r.byEmail ?? "L2 Admin",
+    }));
   },
 
   /**

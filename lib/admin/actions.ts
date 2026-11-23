@@ -148,3 +148,61 @@ export async function saveAccountAction(
     return { ok: false, error: e instanceof Error ? e.message : "Could not save changes." };
   }
 }
+
+// ───────────────────────── CSV import ────────────────────────────────────
+
+export type PreviewResult =
+  | { ok: true; result: Awaited<ReturnType<typeof data.previewImport>> }
+  | { ok: false; error: string };
+
+/** Dry-run a mapped CSV for a distributor. */
+export async function previewImportAction(
+  distributorId: string,
+  csvText: string,
+  columnMap: Record<string, string>,
+): Promise<PreviewResult> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    return { ok: true, result: await data.previewImport(ctx, distributorId, csvText, columnMap) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not preview the import." };
+  }
+}
+
+/** Commit a mapped CSV. */
+export async function commitImportAction(
+  distributorId: string,
+  csvText: string,
+  columnMap: Record<string, string>,
+  overrides: { owner?: boolean },
+  filename: string,
+): Promise<{ ok: true; batchId: string; counts: { rows: number; created: number; updated: number; skipped: number } } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    const res = await data.commitImport(ctx, distributorId, csvText, columnMap, overrides, filename);
+    revalidatePath(`/distributors/${distributorId}`);
+    revalidatePath("/");
+    return { ok: true, ...res };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not commit the import." };
+  }
+}
+
+/** Roll back a committed import. */
+export async function rollbackImportAction(
+  batchId: string,
+  distributorId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.rollbackImport(ctx, batchId);
+    revalidatePath(`/distributors/${distributorId}`);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not roll back the import." };
+  }
+}

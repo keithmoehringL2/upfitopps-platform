@@ -64,6 +64,13 @@
       "when": 1795362477468,
       "tag": "0008_thick_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795436142807,
+      "tag": "0009_wise_freak",
+      "breakpoints": true
     }
   ]
 }

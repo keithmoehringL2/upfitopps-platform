@@ -59,6 +59,8 @@ export const verifyPurposeEnum = pgEnum("verify_purpose", [
   "password_reset",
 ]);
 
+export const importStatusEnum = pgEnum("import_status", ["committed", "rolled_back"]);
+
 // How a rep touched a prospect, and what came of it. Outcomes drive the cadence
 // engine (next-eligible date) and some lifecycle/suppression transitions; see
 // lib/rep/outcomes.ts.
@@ -123,6 +125,9 @@ export const manufacturerProgram = pgTable("manufacturer_program", {
     .notNull()
     .references(() => manufacturer.id),
   name: text("name").notNull(),
+  // Source/program code used in import files (CSV program_code) to attribute a
+  // company to this program's VIO cohort (company.source_program_id).
+  code: text("code"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -333,6 +338,46 @@ export const programDistributor = pgTable(
   (t) => [
     uniqueIndex("program_distributor_uq").on(t.programId, t.distributorId),
   ],
+);
+
+// ---------------------------------------------------------------------------
+// CSV import batches (L2 admin) — enable rollback + import history
+// ---------------------------------------------------------------------------
+export const importBatch = pgTable(
+  "import_batch",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    distributorId: uuid("distributor_id")
+      .notNull()
+      .references(() => distributor.id),
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => user.id),
+    filename: text("filename").notNull(),
+    columnMap: jsonb("column_map").notNull(), // {csvHeader: fieldKey}
+    counts: jsonb("counts").notNull(), // {rows, created, updated, skipped}
+    overrides: jsonb("overrides"), // {owner: bool}
+    status: importStatusEnum("status").notNull().default("committed"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("import_batch_distributor_idx").on(t.distributorId)],
+);
+
+// One row per company an import inserted or updated, with the pre-import state
+// of overwritten fields, so a committed batch can be rolled back.
+export const importChange = pgTable(
+  "import_change",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    importBatchId: uuid("import_batch_id")
+      .notNull()
+      .references(() => importBatch.id),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id),
+    wasInsert: boolean("was_insert").notNull(),
+    before: jsonb("before"), // prior descriptive fields for updates; null for inserts
+  },
+  (t) => [index("import_change_batch_idx").on(t.importBatchId)],
 );
 
 // ---------------------------------------------------------------------------

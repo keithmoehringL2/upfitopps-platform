@@ -42,8 +42,10 @@ async function main() {
 
   await db
     .insert(manufacturerProgram)
-    .values({ id: ID.program, manufacturerId: ID.mfr, name: "Adrian Steel VIO" })
+    .values({ id: ID.program, manufacturerId: ID.mfr, name: "Adrian Steel VIO", code: "AS-VIO-F26" })
     .onConflictDoNothing();
+  // Ensure the program code is set on re-seed (used by CSV program_code).
+  await db.update(manufacturerProgram).set({ code: "AS-VIO-F26" }).where(eq(manufacturerProgram.id, ID.program));
 
   await db
     .insert(distributor)
