@@ -16,6 +16,7 @@
     "db:reset": "tsx --env-file=.env.local scripts/reset-db.ts",
     "db:verify": "tsx --env-file=.env.local scripts/verify-isolation.ts",
     "email:test": "tsx --env-file=.env.local scripts/send-daily-email.ts",
+    "admin:create": "tsx --env-file=.env.production.local scripts/create-admin.ts",
     "vercel-build": "drizzle-kit migrate && next build"
   },
   "dependencies": {
