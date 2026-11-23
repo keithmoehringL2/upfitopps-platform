@@ -45,3 +45,13 @@ export async function requireAdmin(): Promise<AuthContext> {
   }
   return ctx;
 }
+
+/** Require a signed-in manufacturer user (regional or leadership), or redirect
+ *  to the portal sign-in. */
+export async function requireManufacturer(): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  if (!ctx || (ctx.role !== "mfr_regional" && ctx.role !== "mfr_leadership")) {
+    redirect("/login"); // on portal.<root> this resolves to the portal login
+  }
+  return ctx;
+}

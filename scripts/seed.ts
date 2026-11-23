@@ -14,9 +14,10 @@ import {
 import { hashPassword } from "../lib/auth/password";
 import { SEED_IDS as ID } from "./seed-ids";
 
-// Dev-only passwords for the seeded manager and L2 admin so you can sign in.
+// Dev-only passwords for the seeded manager, L2 admin and manufacturer users.
 const DEMO_MANAGER_PASSWORD = "upfit1234";
 const DEMO_ADMIN_PASSWORD = "upfit1234";
+const DEMO_MFR_PASSWORD = "upfit1234";
 
 // Relative-date helpers so the seeded queue always has a realistic mix of
 // due / not-yet-due prospects regardless of when you run it.
@@ -63,6 +64,7 @@ async function main() {
       { id: ID.rep1, email: "rep1@truckcolors.test", name: "Alex Rivera", role: "rep", distributorId: ID.distTruck, dailyTarget: 20 },
       { id: ID.rep2, email: "rep2@demo.test", name: "Sam Lee", role: "rep", distributorId: ID.distDemo, dailyTarget: 10 },
       { id: ID.mfrRegional, email: "regional@adriansteel.test", name: "Mike Turner", role: "mfr_regional", manufacturerId: ID.mfr },
+      { id: ID.mfrLeader, email: "skim@adriansteel.test", name: "Sarah Kim", role: "mfr_leadership", manufacturerId: ID.mfr },
     ])
     .onConflictDoNothing();
 
@@ -73,6 +75,7 @@ async function main() {
     [ID.rep1, "Alex Rivera"],
     [ID.rep2, "Sam Lee"],
     [ID.mfrRegional, "Mike Turner"],
+    [ID.mfrLeader, "Sarah Kim"],
   ] as const) {
     await db.update(user).set({ name }).where(eq(user.id, id));
   }
@@ -336,6 +339,11 @@ async function main() {
     .set({ passwordHash: await hashPassword(DEMO_ADMIN_PASSWORD) })
     .where(eq(user.id, ID.admin));
 
+  // Manufacturer portal passwords (portal.<root>/login): regional + leadership.
+  const mfrHash = await hashPassword(DEMO_MFR_PASSWORD);
+  await db.update(user).set({ passwordHash: mfrHash }).where(eq(user.id, ID.mfrRegional));
+  await db.update(user).set({ passwordHash: mfrHash }).where(eq(user.id, ID.mfrLeader));
+
   // Demo-friendly daily goal so the queue's progress bar is meaningful.
   await db.update(user).set({ dailyTarget: 8 }).where(eq(user.id, ID.rep1));
 
@@ -394,6 +402,7 @@ async function main() {
   console.log(`  demo manager: manager@truckcolors.test / ${DEMO_MANAGER_PASSWORD}`);
   console.log("  demo rep:     rep1@truckcolors.test (passwordless)");
   console.log(`  demo admin:   admin@l2-digital.test / ${DEMO_ADMIN_PASSWORD} (admin.localhost:3000)`);
+  console.log(`  demo mfr:     regional@adriansteel.test · skim@adriansteel.test / ${DEMO_MFR_PASSWORD} (portal.localhost:3000)`);
   process.exit(0);
 }
 

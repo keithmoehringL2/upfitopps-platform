@@ -50,6 +50,22 @@ function requireAdmin(ctx: AuthContext): void {
   }
 }
 
+/**
+ * Manufacturer portal gate. Manufacturer users get an aggregate-only read model
+ * scoped to their programs — never company records. Returns the scope keys.
+ */
+function requireManufacturer(ctx: AuthContext): {
+  userId: string;
+  manufacturerId: string;
+  role: "mfr_regional" | "mfr_leadership";
+} {
+  if (ctx.role !== "mfr_regional" && ctx.role !== "mfr_leadership") {
+    throw new ForbiddenError("Manufacturer portal only");
+  }
+  if (!ctx.manufacturerId) throw new ForbiddenError("No manufacturer in context");
+  return { userId: ctx.userId, manufacturerId: ctx.manufacturerId, role: ctx.role };
+}
+
 /** Slug validation shared by the availability check and provisioning. */
 export type SlugState = "ok" | "bad_format" | "reserved" | "taken";
 function slugShapeOk(slug: string): boolean {
@@ -132,6 +148,134 @@ function descriptiveFields(f: {
     totalVehicles: f.totalVehicles, truckCount: f.truckCount, vanCount: f.vanCount, fleetMix: f.fleetMix,
     priorityScore: f.priorityScore, priorityExplanation: f.priorityExplanation, touchIntervalDays: f.touchIntervalDays,
   };
+}
+
+// ── Manufacturer aggregate-only read model helpers ────────────────────────
+// A recorded "attempt" is a call with a saved outcome (skips the data-quality
+// wrong_number). "DM reached" is specifically a decision_maker outcome.
+const MFR_ATTEMPT = new Set(["no_answer", "voicemail", "gatekeeper", "decision_maker"]);
+
+type CohortCompany = {
+  id: string;
+  distributorId: string;
+  sourceProgramId: string | null;
+  industryPrimary: string | null;
+  lifecycleState: string;
+  hasDm: boolean;
+  quoted: boolean;
+  totalVehicles: number | null;
+};
+type CohortInteraction = { companyId: string; outcome: string; createdAt: Date };
+
+/** The 7 program KPIs for a set of cohort companies + their interactions. */
+function mfrMetrics(companies: CohortCompany[], ints: CohortInteraction[]) {
+  const byCompany = new Map<string, CohortInteraction[]>();
+  for (const i of ints) {
+    const arr = byCompany.get(i.companyId) ?? [];
+    arr.push(i);
+    byCompany.set(i.companyId, arr);
+  }
+  const N = companies.length;
+  const A = companies.filter((c) => (byCompany.get(c.id) ?? []).some((i) => MFR_ATTEMPT.has(i.outcome))).length;
+  const E = ints.filter((i) => MFR_ATTEMPT.has(i.outcome)).length;
+  const pdm = companies.filter((c) => c.hasDm).length;
+  const dmr = companies.filter((c) => (byCompany.get(c.id) ?? []).some((i) => i.outcome === "decision_maker")).length;
+  const opp = companies.filter((c) => c.lifecycleState === "opp").length;
+  const q = companies.filter((c) => c.quoted).length;
+  return { N, A, E, pdm, dmr, opp, q, mor: N ? A / N : 0 };
+}
+
+/** 12 weekly buckets ending today: weekly attempts + cumulative outreach rate. */
+function mfrTrend(N: number, ints: CohortInteraction[]) {
+  const now = Date.now();
+  const WEEK = 7 * 86_400_000;
+  const firstAttempt = new Map<string, number>();
+  for (const i of ints) {
+    if (!MFR_ATTEMPT.has(i.outcome)) continue;
+    const t = new Date(i.createdAt).getTime();
+    const prev = firstAttempt.get(i.companyId);
+    if (prev == null || t < prev) firstAttempt.set(i.companyId, t);
+  }
+  const firsts = [...firstAttempt.values()];
+  const series: { week: string; attempts: number; rate: number }[] = [];
+  for (let k = 0; k < 12; k++) {
+    const end = now - (11 - k) * WEEK;
+    const start = end - WEEK;
+    const attempts = ints.filter((i) => {
+      if (!MFR_ATTEMPT.has(i.outcome)) return false;
+      const t = new Date(i.createdAt).getTime();
+      return t >= start && t < end;
+    }).length;
+    const reached = firsts.filter((t) => t <= end).length;
+    series.push({
+      week: new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      attempts,
+      rate: N ? Math.round((reached / N) * 100) : 0,
+    });
+  }
+  return series;
+}
+
+/** The program↔distributor rows a manufacturer user may see (regional = own
+ *  assignments; leadership = all of the manufacturer's), optionally filtered to
+ *  one regional rep. */
+async function fetchMfrScope(ctx: AuthContext, repFilter?: string | null) {
+  const { userId, manufacturerId, role } = requireManufacturer(ctx);
+  const db = getDb();
+  const rows = await db
+    .select({
+      pdId: programDistributor.id,
+      programId: programDistributor.programId,
+      distributorId: programDistributor.distributorId,
+      cohort: programDistributor.cohort,
+      regionalRepUserId: programDistributor.regionalRepUserId,
+      pdCreatedAt: programDistributor.createdAt,
+      distributorName: distributor.name,
+      regionalRepName: user.name,
+      regionalRepEmail: user.email,
+    })
+    .from(programDistributor)
+    .innerJoin(manufacturerProgram, eq(programDistributor.programId, manufacturerProgram.id))
+    .innerJoin(distributor, eq(programDistributor.distributorId, distributor.id))
+    .leftJoin(user, eq(programDistributor.regionalRepUserId, user.id))
+    .where(eq(manufacturerProgram.manufacturerId, manufacturerId));
+  let scoped = role === "mfr_regional" ? rows.filter((r) => r.regionalRepUserId === userId) : rows;
+  if (repFilter) scoped = scoped.filter((r) => r.regionalRepUserId === repFilter);
+  return { role, manufacturerId, scoped };
+}
+
+/** Cohort companies (aggregate-only columns) + their interactions for a set of
+ *  scoped program↔distributor rows. Never selects names/contacts/notes. */
+async function fetchCohort(scoped: Awaited<ReturnType<typeof fetchMfrScope>>["scoped"]) {
+  const db = getDb();
+  const programIds = [...new Set(scoped.map((s) => s.programId))];
+  const distributorIds = [...new Set(scoped.map((s) => s.distributorId))];
+  const pairKey = new Set(scoped.map((s) => `${s.programId}|${s.distributorId}`));
+  if (programIds.length === 0 || distributorIds.length === 0) {
+    return { companies: [] as CohortCompany[], ints: [] as CohortInteraction[] };
+  }
+  const comps = await db
+    .select({
+      id: company.id,
+      distributorId: company.distributorId,
+      sourceProgramId: company.sourceProgramId,
+      industryPrimary: company.industryPrimary,
+      lifecycleState: company.lifecycleState,
+      hasDm: sql<boolean>`${company.decisionMaker} is not null`,
+      quoted: sql<boolean>`${company.quoteCount} > 0`,
+      totalVehicles: company.totalVehicles,
+    })
+    .from(company)
+    .where(and(inArray(company.sourceProgramId, programIds), inArray(company.distributorId, distributorIds)));
+  const companies = comps.filter((c) => c.sourceProgramId && pairKey.has(`${c.sourceProgramId}|${c.distributorId}`));
+  const ids = companies.map((c) => c.id);
+  const ints = ids.length
+    ? await db
+        .select({ companyId: interaction.companyId, outcome: interaction.outcome, createdAt: interaction.createdAt })
+        .from(interaction)
+        .where(inArray(interaction.companyId, ids))
+    : [];
+  return { companies, ints };
 }
 
 /**
@@ -403,6 +547,131 @@ export const data = {
       targetId: programDistributorId,
       after: { regionalRepUserId: regionalRepUserId || null },
     });
+  },
+
+  /** Admin lookup of a manufacturer portal user (for issuing a setup link). */
+  async getPortalUser(ctx: AuthContext, userId: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [u] = await db
+      .select({ id: user.id, email: user.email, name: user.name, role: user.role, manufacturerId: user.manufacturerId })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!u || (u.role !== "mfr_regional" && u.role !== "mfr_leadership")) return null;
+    return u;
+  },
+
+  // ───────────────────── Manufacturer portal (aggregate-only) ───────────────
+
+  /**
+   * Program reporting Overview for a manufacturer user. Aggregate-only: returns
+   * KPI totals, a 12-week trend, per-regional-rep rollups (leadership) and
+   * per-distributor rows (distributor partner name + the manufacturer's OWN
+   * regional-rep name only). Never returns prospect names, contacts, distributor
+   * rep identities or quote amounts. Scoped to the user's programs.
+   */
+  async getManufacturerOverview(ctx: AuthContext, repFilter?: string | null) {
+    const { role, manufacturerId, scoped } = await fetchMfrScope(ctx, repFilter);
+    const db = getDb();
+    const [mfr] = await db.select({ name: manufacturer.name }).from(manufacturer).where(eq(manufacturer.id, manufacturerId)).limit(1);
+    const { companies, ints } = await fetchCohort(scoped);
+
+    const intsByCompany = new Map<string, CohortInteraction[]>();
+    for (const i of ints) { const a = intsByCompany.get(i.companyId) ?? []; a.push(i); intsByCompany.set(i.companyId, a); }
+    const compsByDist = new Map<string, CohortCompany[]>();
+    for (const c of companies) { const a = compsByDist.get(c.distributorId) ?? []; a.push(c); compsByDist.set(c.distributorId, a); }
+
+    const distMeta = new Map<string, { name: string; repName: string | null; repId: string | null }>();
+    for (const s of scoped) if (!distMeta.has(s.distributorId)) distMeta.set(s.distributorId, { name: s.distributorName, repName: s.regionalRepName, repId: s.regionalRepUserId });
+
+    const distributors = [...distMeta.entries()].map(([id, meta]) => {
+      const cs = compsByDist.get(id) ?? [];
+      const is = cs.flatMap((c) => intsByCompany.get(c.id) ?? []);
+      return { id, name: meta.name, regionalRepName: meta.repName, ...mfrMetrics(cs, is) };
+    }).sort((a, b) => b.mor - a.mor);
+
+    const totals = mfrMetrics(companies, ints);
+    const trend = mfrTrend(totals.N, ints);
+
+    const repMap = new Map<string, string>();
+    for (const s of scoped) if (s.regionalRepUserId) repMap.set(s.regionalRepUserId, s.regionalRepName ?? s.regionalRepEmail ?? "Regional rep");
+    const regionalReps = [...repMap.entries()].map(([id, name]) => ({ id, name }));
+
+    let byRep: { repName: string; distributors: number; N: number; mor: number; dmr: number; opp: number; q: number }[] | null = null;
+    if (role === "mfr_leadership" && !repFilter) {
+      const groups = new Map<string, { name: string; distIds: Set<string> }>();
+      for (const s of scoped) {
+        const key = s.regionalRepUserId ?? "none";
+        const g = groups.get(key) ?? { name: s.regionalRepUserId ? (s.regionalRepName ?? s.regionalRepEmail ?? "Regional rep") : "Unassigned", distIds: new Set<string>() };
+        g.distIds.add(s.distributorId); groups.set(key, g);
+      }
+      byRep = [...groups.values()].map((g) => {
+        const cs = [...g.distIds].flatMap((d) => compsByDist.get(d) ?? []);
+        const is = cs.flatMap((c) => intsByCompany.get(c.id) ?? []);
+        const m = mfrMetrics(cs, is);
+        return { repName: g.name, distributors: g.distIds.size, N: m.N, mor: m.mor, dmr: m.dmr, opp: m.opp, q: m.q };
+      }).sort((a, b) => b.N - a.N);
+    }
+
+    const nDist = distMeta.size;
+    const scopeLabel =
+      role === "mfr_leadership"
+        ? repFilter
+          ? `${repMap.get(repFilter) ?? "Rep"} · ${nDist} distributor${nDist === 1 ? "" : "s"}`
+          : `All regions · ${nDist} distributor${nDist === 1 ? "" : "s"}`
+        : `${nDist} assigned distributor${nDist === 1 ? "" : "s"}`;
+
+    return { manufacturerName: mfr?.name ?? "", role, scopeLabel, regionalReps, activeRepFilter: repFilter ?? null, totals, trend, byRep, distributors };
+  },
+
+  /** Program reporting drill-in for one distributor. Verifies the distributor is
+   *  in the user's scope. Aggregate-only (KPIs, funnel, trend, industry mix). */
+  async getManufacturerDistributor(ctx: AuthContext, distributorId: string) {
+    const { manufacturerId, scoped } = await fetchMfrScope(ctx);
+    const mine = scoped.filter((s) => s.distributorId === distributorId);
+    if (mine.length === 0) throw new ForbiddenError("Distributor not in your programs");
+    const db = getDb();
+    const { companies, ints } = await fetchCohort(mine);
+    const totals = mfrMetrics(companies, ints);
+    const trend = mfrTrend(totals.N, ints);
+
+    const funnel = [
+      { label: "VIO companies", value: totals.N },
+      { label: "Outreach attempted", value: totals.A },
+      { label: "DMs identified", value: totals.pdm },
+      { label: "DMs reached", value: totals.dmr },
+      { label: "Opportunities", value: totals.opp },
+      { label: "Companies quoted", value: totals.q },
+    ].map((s) => ({ ...s, pct: totals.N ? Math.round((s.value / totals.N) * 100) : 0 }));
+
+    const intsByCompany = new Map<string, CohortInteraction[]>();
+    for (const i of ints) { const a = intsByCompany.get(i.companyId) ?? []; a.push(i); intsByCompany.set(i.companyId, a); }
+    const indMap = new Map<string, CohortCompany[]>();
+    for (const c of companies) { const key = c.industryPrimary ?? "Unspecified"; const a = indMap.get(key) ?? []; a.push(c); indMap.set(key, a); }
+    const byIndustry = [...indMap.entries()].map(([industry, cs]) => {
+      const is = cs.flatMap((c) => intsByCompany.get(c.id) ?? []);
+      const m = mfrMetrics(cs, is);
+      const fleet = cs.map((c) => c.totalVehicles).filter((v): v is number => v != null);
+      const avgFleet = fleet.length ? Math.round(fleet.reduce((a, b) => a + b, 0) / fleet.length) : 0;
+      return { industry, N: m.N, avgFleet, mor: m.mor, dmr: m.dmr, opp: m.opp, q: m.q };
+    }).sort((a, b) => b.N - a.N);
+
+    const meta = mine[0];
+    const weeksActive = Math.max(1, Math.round((Date.now() - new Date(meta.pdCreatedAt).getTime()) / (7 * 86_400_000)));
+    const [mfr] = await db.select({ name: manufacturer.name }).from(manufacturer).where(eq(manufacturer.id, manufacturerId)).limit(1);
+
+    return {
+      manufacturerName: mfr?.name ?? "",
+      distributorName: meta.distributorName,
+      regionalRepName: meta.regionalRepName,
+      cohort: meta.cohort,
+      weeksActive,
+      totals,
+      funnel,
+      trend,
+      byIndustry,
+    };
   },
 
   /** Live subdomain availability for the New Distributor wizard. Admin-only. */

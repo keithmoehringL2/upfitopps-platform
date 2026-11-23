@@ -46,6 +46,18 @@ export function apexBaseUrl(): string {
   return `http://localhost:${port}`;
 }
 
+/**
+ * Absolute base URL for the manufacturer portal (reserved `portal` subdomain).
+ * Manufacturer users sign in here, so their password-setup links must land on
+ * this host for the host-only session cookie to apply.
+ */
+export function portalBaseUrl(): string {
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  if (process.env.NODE_ENV === "production") return `https://portal.${root}`;
+  const port = process.env.PORT ?? "3000";
+  return `http://portal.localhost:${port}`;
+}
+
 export function resolveHost(rawHost: string): ResolvedHost {
   const host = (rawHost || "").split(":")[0].toLowerCase().trim();
 

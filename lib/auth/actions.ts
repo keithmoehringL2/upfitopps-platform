@@ -85,6 +85,40 @@ export async function adminLogout(): Promise<void> {
   redirect("/login");
 }
 
+// Manufacturer portal login (Flow C). Served on the reserved `portal` subdomain;
+// paths are host-relative to portal.<root> (the proxy rewrites them to /portal*).
+export async function portalLogin(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!email || !password) {
+    return { error: "Enter your email and password." };
+  }
+
+  const fail = { error: "Invalid email or password." };
+
+  const rows = await getDb().select().from(userTable).where(eq(userTable.email, email)).limit(1);
+  const u = rows[0];
+
+  if (!u || (u.role !== "mfr_regional" && u.role !== "mfr_leadership") || !u.passwordHash || u.status !== "active") {
+    return fail;
+  }
+  if (!(await verifyPassword(password, u.passwordHash))) {
+    return fail;
+  }
+
+  await createSession(u.id);
+  redirect("/"); // portal.<root>/ → the manufacturer Overview
+}
+
+export async function portalLogout(): Promise<void> {
+  await deleteSession();
+  redirect("/login");
+}
+
 // Manager first-time password setup (and reset): consume the emailed token, set
 // the password, sign them in. Served on the apex, where managers sign in.
 export async function setPassword(
@@ -107,11 +141,14 @@ export async function setPassword(
     return { error: "This link has expired or already been used. Ask your admin for a new one." };
   }
 
-  await getDb()
+  const [u] = await getDb()
     .update(userTable)
     .set({ passwordHash: await hashPassword(password), updatedAt: new Date() })
-    .where(eq(userTable.id, userId));
+    .where(eq(userTable.id, userId))
+    .returning({ role: userTable.role });
 
   await createSession(userId);
-  redirect("/manager");
+  // The set-password page is served on the user's own host (apex for managers,
+  // portal.<root> for manufacturers), so these land in the right app.
+  redirect(u?.role === "manager" ? "/manager" : "/");
 }

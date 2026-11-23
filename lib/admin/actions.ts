@@ -6,7 +6,7 @@ import { getAuthContext } from "@/lib/auth/dal";
 import { data } from "@/lib/db/gateway";
 import type { SlugState } from "@/lib/db/gateway";
 import { createPasswordSetupToken } from "@/lib/auth/password-setup";
-import { apexBaseUrl } from "@/lib/tenancy/resolve";
+import { apexBaseUrl, portalBaseUrl } from "@/lib/tenancy/resolve";
 import { sendEmail, fromAddress } from "@/lib/email/client";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -250,5 +250,22 @@ export async function setAssignmentRepAction(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not update the assignment." };
+  }
+}
+
+/** Mint a password-setup link for a manufacturer portal user (lands on the
+ *  portal subdomain). The admin copies/sends it. */
+export async function manufacturerSetupLinkAction(
+  userId: string,
+): Promise<{ ok: true; link: string } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    const u = await data.getPortalUser(ctx, userId);
+    if (!u) return { ok: false, error: "That user is not a manufacturer portal user." };
+    const token = await createPasswordSetupToken(userId);
+    return { ok: true, link: `${portalBaseUrl()}/set-password?token=${token}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create the setup link." };
   }
 }
