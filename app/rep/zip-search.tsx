@@ -29,12 +29,7 @@ export function ZipSearch({ apiKey }: { apiKey?: string }) {
   }
 
   return (
-    <section id="zip" style={{ display: "flex", flexDirection: "column", gap: 10, scrollMarginTop: 120 }}>
-      <h3 style={{ margin: 0, color: "var(--accent-700)", display: "flex", alignItems: "center", gap: 8, fontSize: 25, fontWeight: 600 }}>
-        <i className="ph-duotone ph-map-pin" style={{ fontSize: 26 }} />
-        <span>Find by ZIP</span>
-      </h3>
-
+    <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", gap: 8 }}>
         <input
           className="input"
@@ -54,7 +49,7 @@ export function ZipSearch({ apiKey }: { apiKey?: string }) {
       <p style={{ fontSize: 13, color: "var(--neutral-700)", margin: 0 }}>
         {error
           ? error
-          : "Shows cold prospects in exactly this ZIP, by priority. Searching never changes ownership."}
+          : "Shows prospects in exactly this ZIP, by priority. Searching never changes ownership."}
       </p>
 
       {/* Map + results appear only after a search */}
@@ -62,8 +57,8 @@ export function ZipSearch({ apiKey }: { apiKey?: string }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
           <div style={{ fontSize: 14, color: "var(--neutral-800)", fontWeight: 600 }}>
             {result.rows.length > 0
-              ? `${result.rows.length} cold prospect${result.rows.length === 1 ? "" : "s"} in ${result.zip}`
-              : `No cold prospects in ${result.zip}.`}
+              ? `${result.rows.length} prospect${result.rows.length === 1 ? "" : "s"} in ${result.zip}`
+              : `No prospects in ${result.zip}.`}
           </div>
 
           {result.rows.length > 0 && <ZipMap pins={result.rows} apiKey={apiKey} />}

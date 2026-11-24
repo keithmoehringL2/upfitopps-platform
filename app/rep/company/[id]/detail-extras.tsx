@@ -156,7 +156,7 @@ export function QuoteSection({ companyId, count }: { companyId: string; count: n
         </button>
       </div>
       <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>
-        Flag an opportunity from the outcome panel above — it leaves the cold queue on save.
+        Flag an opportunity from the outcome panel above — it leaves the Prospects queue on save.
       </span>
       {note && <span style={{ fontSize: 13, color: "var(--accent-700)" }}>{note}</span>}
     </section>

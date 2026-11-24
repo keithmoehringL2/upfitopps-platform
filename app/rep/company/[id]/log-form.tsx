@@ -194,7 +194,7 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
           {/* Opportunity toggle */}
           <Toggle
             label="Opportunity identified"
-            sub="Interest and initial fact-finding done. Leaves the cold queue."
+            sub="Interest and initial fact-finding done. Leaves the Prospects queue."
             on={opportunity}
             onToggle={() => setOpportunity((v) => !v)}
           />

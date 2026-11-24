@@ -30,7 +30,7 @@ export default async function ManagerOverviewPage({
 
   const pool = ov.funnel.poolTotal || 1;
   const funnel = [
-    { label: "Total cold prospects", n: ov.funnel.poolTotal, sub: `${ov.funnel.assigned} assigned · ${ov.funnel.unassigned} unassigned` },
+    { label: "Total prospects", n: ov.funnel.poolTotal, sub: `${ov.funnel.assigned} assigned · ${ov.funnel.unassigned} unassigned` },
     { label: "Outreach attempted", n: ov.funnel.attempted, sub: "At least one recorded attempt" },
     { label: "Contacted", n: ov.funnel.contacted, sub: "Spoke with a gatekeeper or decision-maker" },
     { label: "Decision-makers identified", n: ov.funnel.decisionMakers, sub: "Primary confirmed by a rep" },
@@ -65,7 +65,7 @@ export default async function ManagerOverviewPage({
       <section style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
           <h3 style={H3}><i className="ph-duotone ph-funnel" style={{ fontSize: 26 }} /><span>Lead breakdown</span></h3>
-          <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>All cold prospects to date · share of total</span>
+          <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>All prospects to date · share of total</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 28 }}>
           {funnel.map((l) => {

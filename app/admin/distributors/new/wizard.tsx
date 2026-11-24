@@ -308,7 +308,7 @@ export function StepBranding({ name, color, setColor, color2, setColor2, logoUrl
             {Array.from({ length: 10 }, (_, i) => <div key={i} style={{ flex: 1, height: 8, borderRadius: 4, background: i < 4 ? color : "var(--neutral-200)" }} />)}
           </div>
           <span style={{ background: color, color: "#fff", textAlign: "center", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 600 }}>Start</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color }}>Cold Prospects</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color }}>Prospects</span>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>Huron Valley Plumbing</span><span>4.8</span></div>
           <span style={{ alignSelf: "flex-start", background: color2, color: "#fff", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}>Opportunity</span>
         </div>

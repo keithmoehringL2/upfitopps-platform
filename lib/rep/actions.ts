@@ -129,6 +129,15 @@ export async function repLogout(): Promise<void> {
   redirect("/rep/login");
 }
 
+/** Leaderboard for the Leaders panel — re-fetched client-side on period change. */
+export async function getLeaderboardAction(
+  period: "today" | "week" | "month",
+): Promise<Awaited<ReturnType<typeof data.getLeaderboard>>> {
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.role !== "rep") return null;
+  return data.getLeaderboard(ctx, period);
+}
+
 // ───────────────────────── Decision-maker + quote ────────────────────────
 
 type RepResult = { ok?: true; error?: string };

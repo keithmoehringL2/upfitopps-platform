@@ -10,7 +10,7 @@ import { getSkipped, markSkipped } from "@/lib/rep/session-state";
 // (it returns tomorrow, still due) — it never resolves the commitment. These
 // never count toward the daily cold-prospecting goal.
 
-interface Reminder {
+export interface Reminder {
   id: string;
   name: string;
   city: string | null;
@@ -19,7 +19,9 @@ interface Reminder {
   lastTouchDate: string | null;
   dueDate: string;
   note: string | null;
-  kind: "follow_up" | "no_contact_retry" | "touch_base";
+  source?: "rep" | "system" | null;
+  reason?: string | null;
+  kind: "follow_up" | "touch_base";
 }
 
 const fmt = (d: string) =>
@@ -34,7 +36,6 @@ function overdueDays(dueDate: string, today: string): number {
 
 const KIND_LABEL: Record<Reminder["kind"], string | null> = {
   follow_up: "Promised",
-  no_contact_retry: "Retry",
   touch_base: "Customer",
 };
 
@@ -56,12 +57,7 @@ export function FollowUps({ due, upcoming }: { due: Reminder[]; upcoming: Remind
   const upcomingVisible = upcoming.filter((r) => !skipped.has(r.id));
 
   return (
-    <section id="followups" style={{ display: "flex", flexDirection: "column", gap: 10, scrollMarginTop: 120 }}>
-      <h3 style={{ margin: 0, color: "var(--accent-700)", display: "flex", alignItems: "center", gap: 8, fontSize: 25, fontWeight: 600 }}>
-        <i className="ph-duotone ph-bell-ringing" style={{ fontSize: 26 }} />
-        <span>Follow-ups</span>
-      </h3>
-
+    <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {dueVisible.length === 0 ? (
         <p style={{ fontSize: 14, color: "var(--neutral-700)", margin: "2px 0 0" }}>Nothing due today.</p>
       ) : (
@@ -142,8 +138,8 @@ export function FollowUps({ due, upcoming }: { due: Reminder[]; upcoming: Remind
               }}
             >
               <span style={{ fontSize: 15, minWidth: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
-                {r.kind === "no_contact_retry" && (
-                  <span className="tag tag-accent" style={{ fontSize: 10 }}>Retry</span>
+                {r.source === "system" && (
+                  <span className="tag" style={{ fontSize: 10 }}>Auto</span>
                 )}
                 {r.name}
               </span>

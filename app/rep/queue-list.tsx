@@ -13,7 +13,7 @@ export interface QueueRow {
   priorityScore: string | null;
 }
 
-// The day's Cold Prospects, in the stable queue order, stopping at the daily
+// The day's Prospects, in the stable queue order, stopping at the daily
 // target. Worked rows (an outcome logged today, or a pending offline log) show a
 // check and drop to 50% opacity; skipped rows show an undo icon. "Keep Going"
 // below the list opens the next prospect beyond the day's set.
