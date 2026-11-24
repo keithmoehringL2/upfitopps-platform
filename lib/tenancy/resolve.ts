@@ -1,6 +1,6 @@
 import { RESERVED_SUBDOMAINS } from "./reserved-slugs";
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
 
 export type ResolvedHost =
   | { kind: "apex" }
@@ -10,13 +10,13 @@ export type ResolvedHost =
 /**
  * Map an incoming Host header to what the platform should serve.
  *
- *   upfitopps.com            -> apex      (marketing one-pager + login)
- *   www.upfitopps.com        -> apex
- *   admin.upfitopps.com      -> reserved  (L2 admin portal)
- *   portal.upfitopps.com     -> reserved  (manufacturer portal)
- *   truckcolors.upfitopps.com-> tenant    (distributor workspace)
+ *   upfitoutreach.com            -> apex      (marketing one-pager + login)
+ *   www.upfitoutreach.com        -> apex
+ *   admin.upfitoutreach.com      -> reserved  (L2 admin portal)
+ *   portal.upfitoutreach.com     -> reserved  (manufacturer portal)
+ *   truckcolors.upfitoutreach.com-> tenant    (distributor workspace)
  *
- * Works in production (`*.upfitopps.com`) and local dev (`*.localhost`).
+ * Works in production (`*.upfitoutreach.com`) and local dev (`*.localhost`).
  * This is routing only — it never grants access. Authorization must
  * independently confirm the authenticated user is allowed on this tenant.
  */
@@ -28,7 +28,7 @@ export type ResolvedHost =
  * https; local dev uses `<slug>.localhost:<port>` (which resolves to 127.0.0.1).
  */
 export function tenantBaseUrl(slug: string): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
   if (process.env.NODE_ENV === "production") return `https://${slug}.${root}`;
   const port = process.env.PORT ?? "3000";
   return `http://${slug}.localhost:${port}`;
@@ -40,7 +40,7 @@ export function tenantBaseUrl(slug: string): string {
  * distributor subdomain.
  */
 export function apexBaseUrl(): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
   if (process.env.NODE_ENV === "production") return `https://${root}`;
   const port = process.env.PORT ?? "3000";
   return `http://localhost:${port}`;
@@ -52,7 +52,7 @@ export function apexBaseUrl(): string {
  * this host for the host-only session cookie to apply.
  */
 export function portalBaseUrl(): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
   if (process.env.NODE_ENV === "production") return `https://portal.${root}`;
   const port = process.env.PORT ?? "3000";
   return `http://portal.localhost:${port}`;

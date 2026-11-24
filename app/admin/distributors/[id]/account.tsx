@@ -12,7 +12,7 @@ import {
 } from "../new/wizard";
 import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction } from "@/lib/admin/actions";
 
-const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
 
 type Status = "onboarding" | "active" | "paused" | "disabled";
 

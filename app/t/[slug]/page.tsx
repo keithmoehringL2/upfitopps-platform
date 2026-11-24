@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { data } from "@/lib/db/gateway";
 import { brandRampCss } from "@/lib/brand/ramp";
 
-// Tenant workspace (<slug>.upfitopps.com). The proxy rewrites tenant hosts into
+// Tenant workspace (<slug>.upfitoutreach.com). The proxy rewrites tenant hosts into
 // this `/t/[slug]` segment. Placeholder: it proves host -> tenant resolution and
 // runtime white-label branding. The real rep/manager app renders here.
 export default async function TenantHome({
@@ -34,7 +34,7 @@ export default async function TenantHome({
             color: "var(--neutral-600)",
           }}
         >
-          Distributor workspace · {slug}.upfitopps.com
+          Distributor workspace · {slug}.upfitoutreach.com
         </div>
         <h1
           style={{

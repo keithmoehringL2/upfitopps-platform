@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// Apex (upfitopps.com): the public one-page site + the front door to sign in.
+// Apex (upfitoutreach.com): the public one-page site + the front door to sign in.
 // This is a placeholder for the real marketing one-pager — structure and
 // routing are real; copy and visual design come in a later pass.
 export default function HomePage() {

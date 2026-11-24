@@ -16,7 +16,7 @@ export interface DistributorRow {
   lastImport: string | null;
 }
 
-const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitopps.com";
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
 
 const STATUS: Record<DistributorRow["status"], { label: string; cls: string }> = {
   active: { label: "Active", cls: "tag-accent" },

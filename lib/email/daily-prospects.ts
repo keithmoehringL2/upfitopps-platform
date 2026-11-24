@@ -86,7 +86,7 @@ export function renderDailyEmail(d: DailyEmailData): string {
         </td></tr>
 
         <tr><td align="center" style="padding:22px 20px 28px;">
-          <a href="https://upfitopps.com" style="font-size:14px;color:${accent};text-decoration:none;">Open UpfitOpps.com</a>
+          <a href="https://upfitoutreach.com" style="font-size:14px;color:${accent};text-decoration:none;">Open UpfitOutreach.com</a>
         </td></tr>
       </table>
     </td></tr>
