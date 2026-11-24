@@ -10,7 +10,7 @@ import {
   type CatalogProgram,
   type ProgDraft,
 } from "../new/wizard";
-import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction } from "@/lib/admin/actions";
+import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction, deleteDistributorAction } from "@/lib/admin/actions";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
 
@@ -238,7 +238,67 @@ function Overview({ account, status, statusBusy, onStatus }: {
           ))
         )}
       </div>
+
+      <DangerZone
+        id={account.distributor.id}
+        name={account.distributor.name}
+        repCount={account.stats.repCount}
+        companyCount={account.stats.companyCount}
+      />
     </div>
+  );
+}
+
+function DangerZone({ id, name, repCount, companyCount }: {
+  id: string; name: string; repCount: number; companyCount: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const impact = `its ${repCount} rep${repCount === 1 ? "" : "s"}, ${companyCount.toLocaleString()} compan${companyCount === 1 ? "y" : "ies"}`;
+
+  async function del() {
+    setBusy(true); setErr("");
+    const res = await deleteDistributorAction(id);
+    if (res.ok) { router.push("/"); router.refresh(); }
+    else { setErr(res.error); setBusy(false); }
+  }
+
+  return (
+    <section style={{ marginTop: 12, padding: 20, borderRadius: "var(--radius-lg)", border: "1px solid var(--color-accent-2-500)", maxWidth: 620, display: "flex", flexDirection: "column", gap: 8 }}>
+      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--color-accent-2-700)" }}>Danger zone</h4>
+      <p style={{ fontSize: 14, color: "var(--neutral-700)", margin: 0 }}>
+        Permanently delete this distributor, {impact}, and all related records (interactions, imports, history). This cannot be undone.
+      </p>
+      <button type="button" className="btn" style={{ alignSelf: "flex-start", minHeight: 44, color: "var(--bg)", background: "var(--color-accent-2-500)" }} onClick={() => { setOpen(true); setTyped(""); setErr(""); }}>
+        <i className="ph-duotone ph-trash" /><span>Delete distributor</span>
+      </button>
+
+      {open && (
+        <div onClick={() => !busy && setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "color-mix(in srgb, var(--text) 45%, transparent)", display: "grid", placeItems: "center", padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "var(--bg)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)", padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Delete {name}?</h3>
+            <p style={{ fontSize: 14, color: "var(--neutral-700)", margin: 0 }}>
+              This permanently removes <strong>{name}</strong>, {impact}, and every related record. <strong>This cannot be undone.</strong>
+            </p>
+            <div className="field">
+              <label>Type <strong>{name}</strong> to confirm</label>
+              <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={name} autoFocus style={{ minHeight: 44 }} />
+            </div>
+            {err && <p style={{ fontSize: 13, color: "var(--color-accent-2-700)", margin: 0 }}>{err}</p>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+              <button type="button" className="btn btn-secondary" style={{ minHeight: 44 }} disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+              <button type="button" className="btn" style={{ minHeight: 44, color: "var(--bg)", background: "var(--color-accent-2-500)", opacity: typed.trim() !== name || busy ? 0.5 : 1 }} disabled={typed.trim() !== name || busy} onClick={del}>
+                {busy ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

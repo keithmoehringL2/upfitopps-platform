@@ -123,6 +123,21 @@ export async function updateStatusAction(
   }
 }
 
+/** Permanently delete a distributor and all of its data. Admin-only. */
+export async function deleteDistributorAction(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    await data.deleteDistributor(ctx, id);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not delete the distributor." };
+  }
+}
+
 export interface SaveAccountPayload {
   primaryColor: string;
   secondaryColor?: string | null;

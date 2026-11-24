@@ -1,9 +1,10 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   auditLog,
   company,
   distributor,
+  emailVerificationToken,
   importBatch,
   importChange,
   interaction,
@@ -907,6 +908,67 @@ export const data = {
       before: { status: before.status },
       after: { status },
     });
+  },
+
+  /**
+   * Permanently delete a distributor and everything scoped to it — its manager
+   * and reps, all companies, interactions, imports and audit history — in one
+   * transaction. Child rows are removed before the rows they reference.
+   * Manufacturers and their programs are untouched (only this distributor's
+   * program participation is removed). Irreversible. Admin-only.
+   */
+  async deleteDistributor(ctx: AuthContext, id: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [dist] = await db
+      .select({ id: distributor.id, name: distributor.name, slug: distributor.slug })
+      .from(distributor)
+      .where(eq(distributor.id, id))
+      .limit(1);
+    if (!dist) throw new NotFoundError("Distributor not found");
+
+    // Subqueries scoped to this distributor — resolved inside each DELETE.
+    const userIds = db.select({ id: user.id }).from(user).where(eq(user.distributorId, id));
+    const companyIds = db.select({ id: company.id }).from(company).where(eq(company.distributorId, id));
+    const batchIds = db.select({ id: importBatch.id }).from(importBatch).where(eq(importBatch.distributorId, id));
+
+    await db.transaction(async (tx) => {
+      // 1. import_change → references import_batch + company
+      await tx.delete(importChange).where(
+        or(inArray(importChange.importBatchId, batchIds), inArray(importChange.companyId, companyIds)),
+      );
+      // 2. import_batch → references distributor + user
+      await tx.delete(importBatch).where(eq(importBatch.distributorId, id));
+      // 3. interaction → references company + distributor + user
+      await tx.delete(interaction).where(eq(interaction.distributorId, id));
+      // 4. company → references distributor + user + program
+      await tx.delete(company).where(eq(company.distributorId, id));
+      // 5. program_distributor → the distributor's program participation
+      await tx.delete(programDistributor).where(eq(programDistributor.distributorId, id));
+      // 6–7. per-user auth rows → reference user
+      await tx.delete(session).where(inArray(session.userId, userIds));
+      await tx.delete(emailVerificationToken).where(inArray(emailVerificationToken.userId, userIds));
+      // 8. audit_log → references distributor + user (drop by either)
+      await tx.delete(auditLog).where(
+        or(eq(auditLog.distributorId, id), inArray(auditLog.actorUserId, userIds)),
+      );
+      // 9. app_user → the manager + reps (manufacturer users are not scoped here)
+      await tx.delete(user).where(eq(user.distributorId, id));
+      // 10. distributor
+      await tx.delete(distributor).where(eq(distributor.id, id));
+    });
+
+    // Record the deletion itself (the distributor is gone, so no distributorId).
+    await writeAudit(db, {
+      distributorId: null,
+      actorUserId: ctx.userId,
+      action: "distributor.deleted",
+      targetType: "distributor",
+      targetId: dist.id,
+      before: { name: dist.name, slug: dist.slug },
+    });
+
+    return { name: dist.name, slug: dist.slug };
   },
 
   /**
