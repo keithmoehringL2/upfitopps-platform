@@ -9,6 +9,14 @@ export const config = {
 
 export function proxy(req: NextRequest) {
   const url = req.nextUrl;
+
+  // Static files in /public (the logo, sample CSV, etc.) are host-agnostic.
+  // Never rewrite a path with a file extension into a tenant/reserved route
+  // segment, or assets like /brand/upfit-outreach-logo.png 404 on subdomains.
+  if (/\.[^/]+$/.test(url.pathname)) {
+    return NextResponse.next();
+  }
+
   const resolved = resolveHost(req.headers.get("host") ?? "");
 
   // Apex host: marketing one-pager + login live at the root routes as-is.
