@@ -25,12 +25,27 @@ export async function checkSlugAction(slug: string): Promise<{ state: SlugState 
 }
 
 /** Upload a distributor logo to Vercel Blob; returns its public URL. */
+// Resolve the Vercel Blob read-write token. Prefers the canonical name, but
+// falls back to any env var the Vercel Storage integration created — those can
+// be prefixed (e.g. "<PREFIX>_READ_WRITE_TOKEN"). Blob tokens are identified by
+// their "vercel_blob_rw_" value prefix, so we never pick an unrelated var.
+function resolveBlobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value && key.endsWith("READ_WRITE_TOKEN") && value.startsWith("vercel_blob_rw_")) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 export async function uploadLogoAction(
   formData: FormData,
 ): Promise<{ url: string } | { error: string }> {
   const ctx = await adminCtx();
   if (!ctx) return { error: "Not signed in as an admin." };
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const token = resolveBlobToken();
+  if (!token) {
     return { error: "Logo storage isn't configured yet — set BLOB_READ_WRITE_TOKEN to enable uploads." };
   }
   const file = formData.get("file");
@@ -41,6 +56,7 @@ export async function uploadLogoAction(
     const blob = await put(`distributor-logos/${crypto.randomUUID()}.${ext}`, file, {
       access: "public",
       contentType: file.type || "image/png",
+      token,
     });
     return { url: blob.url };
   } catch (e) {
