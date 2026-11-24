@@ -6,7 +6,8 @@ import { getAuthContext } from "@/lib/auth/dal";
 import { data } from "@/lib/db/gateway";
 import type { SlugState } from "@/lib/db/gateway";
 import { createPasswordSetupToken } from "@/lib/auth/password-setup";
-import { apexBaseUrl, portalBaseUrl } from "@/lib/tenancy/resolve";
+import { createRepLoginToken } from "@/lib/auth/rep-token";
+import { apexBaseUrl, portalBaseUrl, tenantBaseUrl } from "@/lib/tenancy/resolve";
 import { sendEmail, fromAddress } from "@/lib/email/client";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -286,6 +287,32 @@ export async function setAssignmentRepAction(
 
 /** Mint a password-setup link for a manufacturer portal user (lands on the
  *  portal subdomain). The admin copies/sends it. */
+/**
+ * Issue a fresh access link for a distributor manager or rep. Managers get a
+ * password-setup link on the apex host; reps get a passwordless magic sign-in
+ * link on their distributor's subdomain. The admin copies/sends it — useful
+ * after changing an email, or when an onboarding email didn't arrive.
+ */
+export async function distributorUserLinkAction(
+  userId: string,
+): Promise<{ ok: true; kind: "manager" | "rep"; link: string } | { ok: false; error: string }> {
+  const ctx = await adminCtx();
+  if (!ctx) return { ok: false, error: "Not signed in as an admin." };
+  try {
+    const u = await data.getDistributorUserForLink(ctx, userId);
+    if (!u) return { ok: false, error: "That user is not a distributor manager or rep." };
+    if (u.role === "manager") {
+      const token = await createPasswordSetupToken(userId);
+      return { ok: true, kind: "manager", link: `${apexBaseUrl()}/set-password?token=${token}` };
+    }
+    const token = await createRepLoginToken(userId);
+    const link = `${tenantBaseUrl(u.slug)}/rep/auth?token=${token}&next=${encodeURIComponent("/rep")}`;
+    return { ok: true, kind: "rep", link };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create the link." };
+  }
+}
+
 export async function manufacturerSetupLinkAction(
   userId: string,
 ): Promise<{ ok: true; link: string } | { ok: false; error: string }> {

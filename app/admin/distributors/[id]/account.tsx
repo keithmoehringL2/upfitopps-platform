@@ -10,7 +10,7 @@ import {
   type CatalogProgram,
   type ProgDraft,
 } from "../new/wizard";
-import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction, deleteDistributorAction } from "@/lib/admin/actions";
+import { uploadLogoAction, saveAccountAction, updateStatusAction, rollbackImportAction, deleteDistributorAction, distributorUserLinkAction } from "@/lib/admin/actions";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
 
@@ -171,7 +171,7 @@ export function DistributorAccount({ account }: { account: AccountData }) {
         <StepBranding name={d.name} color={color} setColor={setColor} color2={color2} setColor2={setColor2}
           logoUrl={logo} logoBusy={logoBusy} logoError={logoError} onLogo={onLogo} onRemoveLogo={() => setLogo(null)} />
       )}
-      {tab === "users" && <UsersEditor mgr={mgr} setMgr={setMgr} reps={reps} setReps={setReps} />}
+      {tab === "users" && <UsersEditor mgr={mgr} setMgr={setMgr} reps={reps} setReps={setReps} managerId={account.manager?.id} />}
       {tab === "programs" && <StepPrograms catalog={account.catalog} progs={progs} setProgs={setProgs} />}
       {tab === "imports" && <ImportsTab id={d.id} imports={account.imports} />}
 
@@ -302,9 +302,33 @@ function DangerZone({ id, name, repCount, companyCount }: {
   );
 }
 
-function UsersEditor({ mgr, setMgr, reps, setReps }: {
+function SetupLinkButton({ userId, label }: { userId: string; label: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function get() {
+    setBusy(true); setErr(""); setLink(null);
+    const res = await distributorUserLinkAction(userId);
+    setBusy(false);
+    if (res.ok) setLink(res.link); else setErr(res.error);
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <button type="button" className="btn btn-ghost" style={{ fontSize: 12, alignSelf: "flex-start", paddingLeft: 0 }} disabled={busy} onClick={get}>
+        <i className="ph-duotone ph-link" /><span>{busy ? "Generating…" : label}</span>
+      </button>
+      {link && (
+        <a href={link} style={{ fontSize: 12, color: "var(--accent-700)", wordBreak: "break-all" }}>{link}</a>
+      )}
+      {err && <span style={{ fontSize: 12, color: "var(--color-accent-2-700)" }}>{err}</span>}
+    </div>
+  );
+}
+
+function UsersEditor({ mgr, setMgr, reps, setReps, managerId }: {
   mgr: { name: string; email: string }; setMgr: (v: { name: string; email: string }) => void;
   reps: RepRow[]; setReps: React.Dispatch<React.SetStateAction<RepRow[]>>;
+  managerId?: string;
 }) {
   const setRep = (i: number, patch: Partial<RepRow>) => setReps((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const removeRep = (i: number) => setReps((rs) => {
@@ -322,15 +346,20 @@ function UsersEditor({ mgr, setMgr, reps, setReps }: {
           <div className="field"><label>Email</label><input className="input" value={mgr.email} onChange={(e) => setMgr({ ...mgr, email: e.target.value })} style={{ minHeight: 44 }} /></div>
         </div>
         {mgr.email && !emailOk(mgr.email) && <span style={{ fontSize: 12, color: "var(--color-accent-2-700, #aa0b56)" }}>Enter a valid email.</span>}
+        {managerId && <SetupLinkButton userId={managerId} label="Get set-password link" />}
+        <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>Save any email change first, then copy this link to the manager. It expires in 24 hours.</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Sales reps</h4>
         {visible.map(({ r, i }) => (
-          <div key={r.id ?? `new-${i}`} style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr 110px 40px", gap: 10, alignItems: "center" }}>
-            <input className="input" value={r.name} onChange={(e) => setRep(i, { name: e.target.value })} placeholder="Name" style={{ minHeight: 42 }} />
-            <input className="input" value={r.email} onChange={(e) => setRep(i, { email: e.target.value })} placeholder="name@company.com" style={{ minHeight: 42 }} />
-            <input className="input" type="number" min={1} value={r.target} onChange={(e) => setRep(i, { target: Math.max(1, parseInt(e.target.value) || 1) })} style={{ minHeight: 42, textAlign: "right" }} />
-            <button type="button" className="btn btn-ghost" aria-label="Remove rep" title="Remove" onClick={() => removeRep(i)} style={{ color: "var(--color-accent-2-700, #aa0b56)" }}><i className="ph-duotone ph-trash" /></button>
+          <div key={r.id ?? `new-${i}`} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr 110px 40px", gap: 10, alignItems: "center" }}>
+              <input className="input" value={r.name} onChange={(e) => setRep(i, { name: e.target.value })} placeholder="Name" style={{ minHeight: 42 }} />
+              <input className="input" value={r.email} onChange={(e) => setRep(i, { email: e.target.value })} placeholder="name@company.com" style={{ minHeight: 42 }} />
+              <input className="input" type="number" min={1} value={r.target} onChange={(e) => setRep(i, { target: Math.max(1, parseInt(e.target.value) || 1) })} style={{ minHeight: 42, textAlign: "right" }} />
+              <button type="button" className="btn btn-ghost" aria-label="Remove rep" title="Remove" onClick={() => removeRep(i)} style={{ color: "var(--color-accent-2-700, #aa0b56)" }}><i className="ph-duotone ph-trash" /></button>
+            </div>
+            {r.id && <SetupLinkButton userId={r.id} label="Get sign-in link" />}
           </div>
         ))}
         {visible.length === 0 && <p style={{ fontSize: 14, color: "var(--neutral-700)" }}>No active reps.</p>}

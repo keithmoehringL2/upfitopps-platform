@@ -564,6 +564,21 @@ export const data = {
     return u;
   },
 
+  /** Admin lookup of a distributor manager/rep (for issuing an access link):
+   *  returns the role and the distributor's slug. Null if not such a user. */
+  async getDistributorUserForLink(ctx: AuthContext, userId: string) {
+    requireAdmin(ctx);
+    const db = getDb();
+    const [row] = await db
+      .select({ id: user.id, role: user.role, slug: distributor.slug })
+      .from(user)
+      .innerJoin(distributor, eq(user.distributorId, distributor.id))
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!row || (row.role !== "manager" && row.role !== "rep")) return null;
+    return { role: row.role as "manager" | "rep", slug: row.slug };
+  },
+
   // ───────────────────── Manufacturer portal (aggregate-only) ───────────────
 
   /**
