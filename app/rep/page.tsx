@@ -58,7 +58,7 @@ export default async function RepQueuePage({
 
   return (
     <RepHome
-      distributorName={distributor?.name ?? "Upfit Opps"}
+      distributorName={distributor?.name ?? "UpfitOutreach"}
       primaryColor={distributor?.primaryColor ?? null}
       userEmail={user?.email ?? ""}
       repName={user?.name ?? user?.email?.split("@")[0] ?? "you"}

@@ -111,7 +111,7 @@ export async function buildManagerSummaries(opts?: { force?: boolean; now?: Date
       quoted: r.quoted,
     }));
 
-    const conv = `Opportunity yield: ${t.oppYield ?? 0}% (${t.opportunities} opportunit${t.opportunities === 1 ? "y" : "ies"} from ${t.dm} decision-maker conversation${t.dm === 1 ? "" : "s"}). Counts reflect activity reps recorded in Upfit Opps.`;
+    const conv = `Opportunity yield: ${t.oppYield ?? 0}% (${t.opportunities} opportunit${t.opportunities === 1 ? "y" : "ies"} from ${t.dm} decision-maker conversation${t.dm === 1 ? "" : "s"}). Counts reflect activity reps recorded in UpfitOutreach.`;
 
     out.push({
       to: recipients,

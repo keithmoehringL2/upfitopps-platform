@@ -85,8 +85,8 @@ export async function createDistributorAction(
   await sendEmail({
     to: created.managerEmail,
     from: fromAddress(payload.name),
-    subject: `Set up your ${payload.name} manager account on Upfit Opps`,
-    html: `<p>Your ${payload.name} workspace on Upfit Opps is ready.</p>
+    subject: `Set up your ${payload.name} manager account on UpfitOutreach`,
+    html: `<p>Your ${payload.name} workspace on UpfitOutreach is ready.</p>
 <p>Set your manager password to sign in:</p>
 <p><a href="${setupLink}">Set your password</a></p>
 <p>This link expires in 24 hours.</p>`,

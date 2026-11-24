@@ -29,7 +29,7 @@ export function PortalShell({
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>Upfit Opps</span>
+          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>UpfitOutreach</span>
           <span style={{ fontSize: 15, fontWeight: 600 }}>{manufacturerName}</span>
           <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>Program reporting</span>
         </div>

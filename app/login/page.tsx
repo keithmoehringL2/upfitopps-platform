@@ -19,7 +19,7 @@ export default function LoginPage() {
           href="/"
           style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)", textDecoration: "none" }}
         >
-          Upfit Opps
+          UpfitOutreach
         </Link>
         <h1 style={{ fontSize: 34, fontWeight: 600, margin: "24px 0 4px" }}>Sign in</h1>
         <p style={{ fontSize: 14, color: "var(--neutral-600)", marginTop: 0 }}>

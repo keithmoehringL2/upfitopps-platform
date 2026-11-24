@@ -22,7 +22,7 @@ export default function HomePage() {
         }}
       >
         <span style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)" }}>
-          Upfit Opps
+          UpfitOutreach
         </span>
         <Link
           href="/login"
@@ -92,7 +92,7 @@ export default function HomePage() {
           color: "var(--neutral-600)",
         }}
       >
-        © {new Date().getFullYear()} L2 Digital · Upfit Opps
+        © {new Date().getFullYear()} L2 Digital · UpfitOutreach
       </footer>
     </main>
   );

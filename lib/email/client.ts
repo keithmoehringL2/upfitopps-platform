@@ -45,10 +45,10 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 /**
  * The "From" header. The address comes from a single verified sender
  * (EMAIL_FROM_ADDRESS); the display name is per-distributor, matching the
- * design's "{Distributor} via Upfit Opps" sender label. Falls back to Resend's
+ * design's "{Distributor} via UpfitOutreach" sender label. Falls back to Resend's
  * shared testing address so a key-only dev setup can send to the account owner.
  */
 export function fromAddress(distributorName: string): string {
   const addr = process.env.EMAIL_FROM_ADDRESS ?? "onboarding@resend.dev";
-  return `${distributorName} via Upfit Opps <${addr}>`;
+  return `${distributorName} via UpfitOutreach <${addr}>`;
 }

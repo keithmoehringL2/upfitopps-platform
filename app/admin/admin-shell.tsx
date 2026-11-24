@@ -39,7 +39,7 @@ export function AdminShell({
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>Upfit Opps</span>
+          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>UpfitOutreach</span>
           <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>L2 Admin</span>
         </div>
         <nav style={{ display: "flex", gap: 28 }}>

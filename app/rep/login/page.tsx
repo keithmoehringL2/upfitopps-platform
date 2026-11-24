@@ -25,7 +25,7 @@ export default async function RepLoginPage({
           href="/"
           style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)", textDecoration: "none" }}
         >
-          Upfit Opps
+          UpfitOutreach
         </Link>
         <h1 style={{ fontSize: 32, fontWeight: 600, margin: "24px 0 4px" }}>Rep sign-in</h1>
         <p style={{ fontSize: 15, color: "var(--neutral-600)", marginTop: 0 }}>

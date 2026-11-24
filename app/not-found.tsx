@@ -19,7 +19,7 @@ export default function NotFound() {
         This page doesn&rsquo;t exist.
       </p>
       <Link href="/" style={{ fontWeight: 600 }}>
-        Go to Upfit Opps
+        Go to UpfitOutreach
       </Link>
     </main>
   );
