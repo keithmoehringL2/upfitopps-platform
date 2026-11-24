@@ -58,6 +58,7 @@ export default async function ManagerOverviewPage({
     <ManagerShell
       brandName={distributor?.name ?? "Distributor"}
       primaryColor={distributor?.primaryColor}
+      secondaryColor={distributor?.secondaryColor}
       userEmail={user?.email}
       active="overview"
     >

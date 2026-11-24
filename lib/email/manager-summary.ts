@@ -56,7 +56,7 @@ function totalCell(accent: string, t: ManagerSummaryTotal | null): string {
 }
 
 export function renderManagerSummary(d: ManagerSummaryData): string {
-  const accent = /^#[0-9a-fA-F]{6}$/.test(d.brandColor) ? d.brandColor : "#1d4ed8";
+  const accent = /^#[0-9a-fA-F]{6}$/.test(d.brandColor) ? d.brandColor : "#008e97";
 
   const totalRows: string[] = [];
   for (let i = 0; i < d.totals.length; i += 3) {

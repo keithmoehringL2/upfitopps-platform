@@ -7,12 +7,14 @@ import { UserMenu } from "./user-menu";
 export function ManagerShell({
   brandName,
   primaryColor,
+  secondaryColor,
   userEmail,
   active,
   children,
 }: {
   brandName: string;
   primaryColor?: string;
+  secondaryColor?: string | null;
   userEmail?: string;
   active: "overview" | "companies" | "settings";
   children: React.ReactNode;
@@ -26,7 +28,7 @@ export function ManagerShell({
   return (
     <div
       style={{
-        ...brandRampVars(primaryColor),
+        ...brandRampVars(primaryColor, secondaryColor),
         minHeight: "100dvh",
         background: "var(--bg)",
         fontFamily: "var(--font-serif)",

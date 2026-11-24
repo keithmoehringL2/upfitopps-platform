@@ -240,7 +240,7 @@ function StepPreview({ preview, file, owner, setOwner, ack, setAck }: {
           <p style={{ fontSize: 13, color: "var(--neutral-700)", margin: 0 }}>Fleet, priority and imported fields update. Local work is kept unless you explicitly allow an override.</p>
           <ProtRow title="Owner" sub={prot.owner > 0 ? `${prot.owner} matching companies have a local owner` : "No matching companies have a local owner"}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
-              <input type="checkbox" checked={owner} onChange={(e) => setOwner(e.target.checked)} style={{ accentColor: "var(--color-accent-2-500, #d6006c)" }} /> Override from file
+              <input type="checkbox" checked={owner} onChange={(e) => setOwner(e.target.checked)} style={{ accentColor: "var(--color-accent-2-500, #fc4c02)" }} /> Override from file
             </label>
           </ProtRow>
           <ProtRow title="Confirmed decision-maker" sub={prot.pdm > 0 ? `${prot.pdm} matching companies have a confirmed primary` : "—"}><Locked /></ProtRow>

@@ -63,7 +63,7 @@ export default async function RepCompanyPage({
   return (
     <div
       style={{
-        ...brandRampVars(distributor?.primaryColor),
+        ...brandRampVars(distributor?.primaryColor, distributor?.secondaryColor),
         minHeight: "100dvh",
         maxWidth: 480,
         margin: "0 auto",

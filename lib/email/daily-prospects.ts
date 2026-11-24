@@ -26,7 +26,7 @@ export function dailyEmailSubject(total: number, weekday: string): string {
 }
 
 export function renderDailyEmail(d: DailyEmailData): string {
-  const accent = /^#[0-9a-fA-F]{6}$/.test(d.brandColor) ? d.brandColor : "#1d4ed8";
+  const accent = /^#[0-9a-fA-F]{6}$/.test(d.brandColor) ? d.brandColor : "#008e97";
   const total = d.counts.followUps + d.counts.prospects + d.counts.customers;
   const intro =
     total === 0

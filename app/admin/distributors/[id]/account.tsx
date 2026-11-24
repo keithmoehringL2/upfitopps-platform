@@ -65,7 +65,7 @@ export function DistributorAccount({ account }: { account: AccountData }) {
 
   // Editable draft (branding + users + programs), saved together via the bar.
   const [color, setColor] = useState(d.primaryColor);
-  const [color2, setColor2] = useState(d.secondaryColor ?? "#d6006c");
+  const [color2, setColor2] = useState(d.secondaryColor ?? "#fc4c02");
   const [logo, setLogo] = useState<string | null>(d.logoUrl);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState("");
@@ -122,7 +122,7 @@ export function DistributorAccount({ account }: { account: AccountData }) {
   }
 
   function discard() {
-    setColor(d.primaryColor); setColor2(d.secondaryColor ?? "#d6006c"); setLogo(d.logoUrl);
+    setColor(d.primaryColor); setColor2(d.secondaryColor ?? "#fc4c02"); setLogo(d.logoUrl);
     setMgr({ name: account.manager?.name ?? "", email: account.manager?.email ?? "" });
     setReps(account.reps.map((r) => ({ id: r.id, name: r.name ?? "", email: r.email, target: r.dailyTarget ?? 10, status: (r.status === "disabled" ? "disabled" : r.status) as RepRow["status"] })));
     setProgs(Object.fromEntries(account.catalog.map((p) => { const a = account.assignments.find((x) => x.programId === p.id); return [p.id, { on: !!a, cohort: a?.cohort ?? "Fall 2026 cohort", regionalRepUserId: a?.regionalRepUserId ?? "" }]; })));

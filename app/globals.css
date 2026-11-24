@@ -15,17 +15,19 @@
   --bg: #ffffff;
   --divider: color-mix(in srgb, #201e1d 16%, transparent);
 
-  /* Platform-default accent ramp (distributor primary overrides this at runtime
-     via a scoped <style>; see lib/brand/ramp.ts). Default primary = #c8102e. */
-  --accent-100: color-mix(in oklch, #c8102e 9%, white);
-  --accent-200: color-mix(in oklch, #c8102e 18%, white);
-  --accent-300: color-mix(in oklch, #c8102e 34%, white);
-  --accent-400: color-mix(in oklch, #c8102e 62%, white);
-  --accent-500: #c8102e;
-  --accent-600: color-mix(in oklch, #c8102e 86%, black);
-  --accent-700: color-mix(in oklch, #c8102e 72%, black);
-  --accent-800: color-mix(in oklch, #c8102e 56%, black);
-  --accent-900: color-mix(in oklch, #c8102e 40%, black);
+  /* Platform-default accent ramp — L2 Digital: Primary Teal (#008e97) through
+     the light/mid steps, resolving to Dark Blue (#003a50) for the dark steps
+     used by headings, links and pressed states. A distributor's primary color
+     overrides this at runtime via a scoped <style> (see lib/brand/ramp.ts). */
+  --accent-100: color-mix(in oklch, #008e97 9%, white);
+  --accent-200: color-mix(in oklch, #008e97 18%, white);
+  --accent-300: color-mix(in oklch, #008e97 34%, white);
+  --accent-400: color-mix(in oklch, #008e97 62%, white);
+  --accent-500: #008e97;
+  --accent-600: color-mix(in oklch, #008e97 78%, #003a50);
+  --accent-700: #003a50;
+  --accent-800: color-mix(in oklch, #003a50 80%, black);
+  --accent-900: color-mix(in oklch, #003a50 62%, black);
 
   /* Radius + shadows */
   --radius-sm: 1px;
@@ -96,13 +98,15 @@ a {
   --color-accent-800: var(--accent-800);
   --color-accent-900: var(--accent-900);
 
-  /* Secondary ink — fixed magenta, for opportunity + destructive accents. */
-  --color-accent-2: #d6006c;
-  --color-accent-2-100: #fff1f4;
-  --color-accent-2-500: #ff458e;
-  --color-accent-2-700: #aa0b56;
-  --color-accent-2-800: #790e3d;
-  --color-accent-2-900: #4b1528;
+  /* Secondary ink — L2 Digital Orange (#fc4c02), for attention (past due),
+     opportunity + destructive accents. A distributor secondary color overrides
+     this per account (see lib/brand/ramp.ts). */
+  --color-accent-2: #fc4c02;
+  --color-accent-2-100: color-mix(in oklch, #fc4c02 12%, white);
+  --color-accent-2-500: #fc4c02;
+  --color-accent-2-700: color-mix(in oklch, #fc4c02 72%, black);
+  --color-accent-2-800: color-mix(in oklch, #fc4c02 56%, black);
+  --color-accent-2-900: color-mix(in oklch, #fc4c02 40%, black);
 
   --space-1: 5px;
   --space-2: 10px;

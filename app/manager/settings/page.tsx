@@ -16,6 +16,7 @@ export default async function ManagerSettingsPage() {
     <ManagerShell
       brandName={distributor?.name ?? "Distributor"}
       primaryColor={distributor?.primaryColor}
+      secondaryColor={distributor?.secondaryColor}
       userEmail={user?.email}
       active="settings"
     >

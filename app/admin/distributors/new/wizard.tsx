@@ -11,8 +11,8 @@ import {
 } from "@/lib/admin/actions";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "upfitoutreach.com";
-const SW1 = ["#c8102e", "#0088b0", "#1d6b3c", "#2a3f9d", "#d35400", "#2d2b2b"];
-const SW2 = ["#d6006c", "#edbb00", "#7d3c98", "#e67e22", "#0088b0", "#605d5d"];
+const SW1 = ["#008e97", "#003a50", "#c8102e", "#2a3f9d", "#1d6b3c", "#2d2b2b"];
+const SW2 = ["#fc4c02", "#d6006c", "#edbb00", "#7d3c98", "#0088b0", "#605d5d"];
 const STEPS = ["Account", "Branding", "Users", "Program", "Review"] as const;
 
 export interface CatalogProgram {
@@ -55,8 +55,8 @@ export function DistributorWizard({ catalog }: { catalog: CatalogProgram[] }) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [slugState, setSlugState] = useState<SlugState>("empty");
 
-  const [color, setColor] = useState("#1d6b3c");
-  const [color2, setColor2] = useState("#edbb00");
+  const [color, setColor] = useState("#008e97");
+  const [color2, setColor2] = useState("#fc4c02");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState("");

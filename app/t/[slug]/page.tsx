@@ -22,7 +22,7 @@ export default async function TenantHome({
       {/* Per-tenant accent ramp derived from the distributor's primary color. */}
       <style
         dangerouslySetInnerHTML={{
-          __html: brandRampCss(distributor.primaryColor),
+          __html: brandRampCss(distributor.primaryColor, distributor.secondaryColor),
         }}
       />
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px" }}>

@@ -24,6 +24,7 @@ function panelFromUrl(): PanelKey | null {
 interface Props {
   distributorName: string;
   primaryColor: string | null;
+  secondaryColor: string | null;
   userEmail: string;
   dateLine: string;
   repName: string;
@@ -42,7 +43,7 @@ interface Props {
 
 export function RepHome(props: Props) {
   const {
-    distributorName, primaryColor, userEmail, dateLine, repName,
+    distributorName, primaryColor, secondaryColor, userEmail, dateLine, repName,
     progress, queue, doneIds, firstOpenId,
     followUpsDue, followUpsUpcoming, customersDue,
     leaderboardEnabled, initialBoard, zipApiKey, initialPanel,
@@ -94,7 +95,7 @@ export function RepHome(props: Props) {
   return (
     <div
       style={{
-        ...brandRampVars(primaryColor ?? undefined),
+        ...brandRampVars(primaryColor ?? undefined, secondaryColor),
         minHeight: "100dvh",
         maxWidth: 480,
         margin: "0 auto",
