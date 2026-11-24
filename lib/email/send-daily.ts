@@ -4,12 +4,7 @@ import { createRepLoginToken } from "@/lib/auth/rep-token";
 import { mergeSettings } from "@/lib/manager/settings";
 import { tenantBaseUrl } from "@/lib/tenancy/resolve";
 import { sendEmail, fromAddress } from "./client";
-import {
-  renderDailyEmail,
-  dailyEmailSubject,
-  type DailyEmailProspect,
-  type DailyEmailFollowUp,
-} from "./daily-prospects";
+import { renderDailyEmail, dailyEmailSubject } from "./daily-prospects";
 
 // Builds and sends the rep "Morning Prospect List" daily email. Rosters each
 // active distributor's email-enabled reps, honours the per-distributor send
@@ -34,27 +29,17 @@ export interface DailyRunResult {
   details: { email: string; status: "sent" | "skipped" | "failed"; reason?: string }[];
 }
 
-function dueLabel(dueDate: string, today: string): string {
-  if (dueDate >= today) return "Due today";
-  const days = Math.round(
-    (Date.parse(today + "T00:00:00Z") - Date.parse(dueDate + "T00:00:00Z")) / 86_400_000,
-  );
-  return `${days} day${days === 1 ? "" : "s"} overdue`;
-}
-
 /** Build the emails that should go out for `now` (ignores the schedule when forced). */
 export async function buildDailyEmails(opts?: { force?: boolean; now?: Date }): Promise<BuiltEmail[]> {
   const now = opts?.now ?? new Date();
   const weekday = WEEKDAYS[now.getUTCDay()];
   const weekdayLong = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-  const today = now.toISOString().slice(0, 10);
   const roster = await data.listDailyEmailRoster();
   const out: BuiltEmail[] = [];
 
   for (const dist of roster) {
     const re = mergeSettings(dist.settings).repEmail;
     if (!opts?.force && (!re.send || !re.days.includes(weekday))) continue;
-    const starter = re.starterLength ?? 5;
     const from = fromAddress(dist.name);
     // Links must land on this distributor's own subdomain so the host-only
     // session cookie set by the magic link applies there.
@@ -72,10 +57,12 @@ export async function buildDailyEmails(opts?: { force?: boolean; now?: Date }): 
         data.listRepQueue(ctx),
         data.listFollowUps(ctx),
       ]);
-      // The queue is already ordered due-first then by score, so the top
-      // `starterLength` are the prospects to start the day on.
-      const picked = queue.slice(0, starter);
-      const target = rep.dailyTarget ?? picked.length;
+      // The three day counts, matching the rep home cards.
+      const target = rep.dailyTarget ?? queue.length;
+      const prospectCount = target > 0 ? Math.min(queue.length, target) : queue.length;
+      const followUpCount = followUps.due.filter((f) => f.kind !== "touch_base").length;
+      const customerCount = followUps.due.filter((f) => f.kind === "touch_base").length;
+      const total = prospectCount + followUpCount + customerCount;
 
       // One single-use token per email; the first tapped link verifies the
       // device and every link lands on its destination via /rep/auth.
@@ -83,41 +70,22 @@ export async function buildDailyEmails(opts?: { force?: boolean; now?: Date }): 
       const link = (next: string) =>
         `${base}/rep/auth?token=${token}&next=${encodeURIComponent(next)}`;
 
-      const prospects: DailyEmailProspect[] = picked.map((c) => ({
-        name: c.name,
-        city: c.city,
-        vehicles: c.totalVehicles ?? (((c.truckCount ?? 0) + (c.vanCount ?? 0)) || null),
-        score: c.priorityScore,
-        url: link(`/rep/company/${c.id}`),
-      }));
-      const fus: DailyEmailFollowUp[] = followUps.due.map((f) => ({
-        name: f.name,
-        kind:
-          f.kind === "touch_base"
-            ? "Customer"
-            : f.kind === "no_contact_retry"
-              ? "Retry"
-              : "Follow-up",
-        reason:
-          f.kind === "touch_base"
-            ? f.note ?? "Customer check-in due"
-            : [dueLabel(f.dueDate, today), f.note].filter(Boolean).join(" · "),
-        url: link(`/rep/company/${f.id}`),
-      }));
-
       out.push({
         to: rep.email,
         from,
-        subject: dailyEmailSubject(target, weekdayLong),
+        subject: dailyEmailSubject(total, weekdayLong),
         distributorName: dist.name,
         html: renderDailyEmail({
           distributorName: dist.name,
           brandColor: dist.primaryColor,
           weekday: weekdayLong,
-          target,
-          queueUrl: link("/rep"),
-          prospects,
-          followUps: fus,
+          counts: { followUps: followUpCount, prospects: prospectCount, customers: customerCount },
+          links: {
+            followUps: link("/rep?panel=followups"),
+            prospects: link("/rep?panel=prospects"),
+            customers: link("/rep?panel=customers"),
+            queue: link("/rep"),
+          },
         }),
       });
     }

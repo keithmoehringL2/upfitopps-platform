@@ -334,27 +334,27 @@ function TeamSection({
 function OutreachSection({ cfg, setCfg }: { cfg: ManagerSettings; setCfg: React.Dispatch<React.SetStateAction<ManagerSettings>> }) {
   const setCad = (key: string, v: number | null) =>
     setCfg((c) => ({ ...c, cadence: { ...c.cadence, [key]: v } }));
-  const setRetry = (patch: Partial<ManagerSettings["retry"]>) =>
-    setCfg((c) => ({ ...c, retry: { ...c.retry, ...patch } }));
+  const setParking = (patch: Partial<ManagerSettings["parking"]>) =>
+    setCfg((c) => ({ ...c, parking: { ...c.parking, ...patch } }));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 620 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <h2 style={H2}>Outreach cadence</h2>
-        <span style={SUB}>How long a company waits before it&rsquo;s eligible again after each outcome. Applies to future scheduling only. A date a prospect asks for always wins.</span>
+        <span style={SUB}>When a rep logs an outcome without picking a follow-up date, the prospect returns to the Follow Ups list after this many days. A date a prospect asks for always wins.</span>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <h4 style={H4}>No-contact retries</h4>
-        <span style={SUB}>No Answer and Left Voicemail follow one cycle: a reminder to retry after the delay, then — if the second attempt still makes no contact — the prospect is parked before it re-enters the cold queue.</span>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 90px 40px", gap: 12, alignItems: "center", maxWidth: 420 }}>
-          <span style={{ fontSize: 16 }}>Retry delay</span>
-          <input className="input" type="number" min={1} value={cfg.retry.retryDays}
-            onChange={(e) => setRetry({ retryDays: parseInt(e.target.value) || 1 })}
+        <h4 style={H4}>Parking</h4>
+        <span style={SUB}>After this many outreach attempts without a rep-set follow-up date, a prospect is parked — it leaves the Follow Ups list and re-enters the Prospects queue once the park duration passes. A rep-set follow-up date keeps it in Follow Ups and never parks it.</span>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 90px 60px", gap: 12, alignItems: "center", maxWidth: 440 }}>
+          <span style={{ fontSize: 16 }}>Attempts before parking</span>
+          <input className="input" type="number" min={1} value={cfg.parking.attemptsBeforeParking}
+            onChange={(e) => setParking({ attemptsBeforeParking: parseInt(e.target.value) || 1 })}
             style={{ minHeight: 40, textAlign: "right" }} />
-          <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>days</span>
-          <span style={{ fontSize: 16 }}>Park cooldown</span>
-          <input className="input" type="number" min={1} value={cfg.retry.parkDays}
-            onChange={(e) => setRetry({ parkDays: parseInt(e.target.value) || 1 })}
+          <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>attempts</span>
+          <span style={{ fontSize: 16 }}>Park duration</span>
+          <input className="input" type="number" min={1} value={cfg.parking.parkDays}
+            onChange={(e) => setParking({ parkDays: parseInt(e.target.value) || 1 })}
             style={{ minHeight: 40, textAlign: "right" }} />
           <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>days</span>
         </div>
@@ -389,7 +389,7 @@ function OutreachSection({ cfg, setCfg }: { cfg: ManagerSettings; setCfg: React.
         </div>
         <Toggle
           label="Show due reminders in the daily email"
-          sub="Listed separately from cold prospects. Touch-base intervals come from the imported file."
+          sub="Listed separately from prospects. Touch-base intervals come from the imported file."
           on={cfg.customer.remindersInDailyEmail}
           onToggle={() => setCfg((c) => ({ ...c, customer: { ...c.customer, remindersInDailyEmail: !c.customer.remindersInDailyEmail } }))}
         />

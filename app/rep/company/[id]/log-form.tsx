@@ -34,7 +34,7 @@ export function LogOutcomeForm({ companyId }: { companyId: string }) {
   // On a successful save, hand a toast to the queue page and navigate there.
   useEffect(() => {
     if (state?.ok) {
-      queueToast("Outcome logged.");
+      queueToast(state.toast ?? "Outcome logged.");
       router.push("/rep");
     }
   }, [state, router]);

@@ -71,6 +71,13 @@
       "when": 1795436142807,
       "tag": "0009_wise_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795524994701,
+      "tag": "0010_famous_turbo",
+      "breakpoints": true
     }
   ]
 }

@@ -58,7 +58,10 @@ export async function requestRepLink(
   return { sent: true };
 }
 
-export type LogState = { error?: string; ok?: boolean };
+export type LogState = { error?: string; ok?: boolean; toast?: string };
+
+const fmtDate = (iso: string) =>
+  new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 /** Log an outcome against a prospect, then advance the rep back to their queue. */
 export async function logOutcome(
@@ -85,8 +88,9 @@ export async function logOutcome(
     return { error: "Pick an outcome." };
   }
 
+  let result: Awaited<ReturnType<typeof data.logInteraction>>;
   try {
-    await data.logInteraction(ctx, {
+    result = await data.logInteraction(ctx, {
       companyId,
       outcome,
       note,
@@ -101,10 +105,23 @@ export async function logOutcome(
     };
   }
 
+  // Build the confirmation toast from what the log actually did.
+  let toast = "Outcome logged.";
+  if (remove === "dnc") toast = "Marked do-not-contact.";
+  else if (remove === "remove") toast = "Removed from outreach.";
+  else if (opportunity) toast = "Marked as an opportunity.";
+  else if (result.wrongNumber) toast = "Flagged — L2 Digital will review the number.";
+  else if (result.parked && result.parkedUntil)
+    toast = `Parked until ${fmtDate(result.parkedUntil)} — back in Prospects then.`;
+  else if (result.followUpDate && result.followUpSource === "system")
+    toast = `Default follow-up ${fmtDate(result.followUpDate)}.`;
+  else if (result.followUpDate)
+    toast = `Follow-up set for ${fmtDate(result.followUpDate)}.`;
+
   // The client toasts and navigates back to the queue on success (so the toast
   // survives the transition); revalidate so the queue shows the row as worked.
   revalidatePath("/rep");
-  return { ok: true };
+  return { ok: true, toast };
 }
 
 export async function repLogout(): Promise<void> {

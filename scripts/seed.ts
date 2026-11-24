@@ -212,9 +212,10 @@ async function main() {
         sourceProgramId: ID.program,
         lastTouchDate: daysFromNow(-9),
         nextEligibleDate: daysFromNow(5),
-        // Explicit follow-up that is overdue — shows in Follow-up Reminders.
+        // Rep-set follow-up that is overdue — shows in Follow Ups, past due.
         followUpDate: daysFromNow(-2),
         followUpNote: "Owner asked me to call back after their busy season.",
+        followUpSource: "rep",
       },
       {
         id: ID.co7,
@@ -237,9 +238,10 @@ async function main() {
         priorityExplanation: "Strong fleet size and territory match.",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
-        // Explicit follow-up a few days out — shows under Upcoming.
+        // Rep-set follow-up a few days out — shows under Upcoming.
         followUpDate: daysFromNow(3),
         followUpNote: "Decision-maker is travelling; reconnect next week.",
+        followUpSource: "rep",
       },
       {
         id: ID.co8,
@@ -259,10 +261,11 @@ async function main() {
         priorityScore: "3.4",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
-        // Parked after two no-contacts — absent from both queues until cooldown.
+        // Parked after reaching the attempts threshold — absent from both
+        // queues until the park duration passes.
         lastTouchDate: daysFromNow(-3),
         nextEligibleDate: daysFromNow(45),
-        noContactAttempts: 0,
+        attemptCount: 0,
       },
       {
         id: ID.co9,
@@ -282,10 +285,34 @@ async function main() {
         priorityScore: "3.9",
         ownerUserId: ID.rep1,
         sourceProgramId: ID.program,
-        // First no-contact logged — a No-Contact Retry that's now due/overdue.
+        // One no-answer logged — a system-assigned follow-up now due/overdue.
         lastTouchDate: daysFromNow(-4),
-        retryDate: daysFromNow(-1),
-        noContactAttempts: 1,
+        followUpDate: daysFromNow(-1),
+        followUpSource: "system",
+        attemptCount: 1,
+      },
+      {
+        id: ID.co10,
+        distributorId: ID.distTruck,
+        externalImportId: "TC-010",
+        name: "Cedar Park Catering",
+        address: "900 E Whitestone Blvd",
+        city: "Cedar Park",
+        state: "TX",
+        zip: "78613",
+        phone: "(512) 555-0188",
+        industryPrimary: "Food Service",
+        totalVehicles: 5,
+        truckCount: 1,
+        vanCount: 4,
+        fleetMix: "Transit ×4 · F-150 ×1",
+        priorityScore: "2.1",
+        ownerUserId: ID.rep1,
+        // A past customer on a recurring check-in — shows in the Customers card,
+        // due now (last touch older than the interval).
+        lifecycleState: "customer",
+        touchIntervalDays: 30,
+        lastTouchDate: daysFromNow(-45),
       },
     ])
     // Upsert so re-seeding refreshes fixtures (and resets cadence/lifecycle
@@ -318,8 +345,10 @@ async function main() {
         nextEligibleDate: sql`excluded.next_eligible_date`,
         followUpDate: sql`excluded.follow_up_date`,
         followUpNote: sql`excluded.follow_up_note`,
+        followUpSource: sql`excluded.follow_up_source`,
         retryDate: sql`excluded.retry_date`,
-        noContactAttempts: sql`excluded.no_contact_attempts`,
+        attemptCount: sql`excluded.no_contact_attempts`,
+        touchIntervalDays: sql`excluded.touch_interval_days`,
         lifecycleState: sql`excluded.lifecycle_state`,
         suppressed: sql`excluded.suppressed`,
         updatedAt: new Date(),

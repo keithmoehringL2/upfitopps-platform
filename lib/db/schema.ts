@@ -54,6 +54,11 @@ export const companyStateEnum = pgEnum("company_state", [
 
 export const suppressionEnum = pgEnum("suppression_kind", ["remove", "dnc"]);
 
+// Who set a company's current follow-up date: the rep chose it, or the system
+// assigned the outcome's default cadence. Both now live on followUpDate, so the
+// source can't be inferred from which column is set.
+export const followUpSourceEnum = pgEnum("follow_up_source", ["rep", "system"]);
+
 export const verifyPurposeEnum = pgEnum("verify_purpose", [
   "rep_device_verify",
   "password_reset",
@@ -243,18 +248,22 @@ export const company = pgTable(
     nextEligibleDate: date("next_eligible_date"),
     touchIntervalDays: integer("touch_interval_days"),
     lastTouchDate: date("last_touch_date"),
-    // Explicit, rep-chosen follow-up — distinct from the cadence-driven
-    // next-eligible date. When set, the company leaves the routine cold queue
-    // and appears in Follow-up Reminders (due when the date arrives); the note
-    // is shown italicized on the reminder row.
+    // The company's current follow-up date. Set on every non-terminal outcome —
+    // either the rep's chosen date or the outcome's default cadence (see
+    // followUpSource). While set, the company sits in the Follow-up Queue, not
+    // the Prospects queue; the note is shown italicized on the reminder row.
     followUpDate: date("follow_up_date"),
     followUpNote: text("follow_up_note"),
-    // No-Contact Retry: set after a first no-contact outreach (no_answer /
-    // voicemail). While set, the company sits in the Follow-up Queue (not the
-    // cold queue); a second no-contact clears it and parks the company.
+    followUpSource: followUpSourceEnum("follow_up_source"),
+    // DEPRECATED: the old No-Contact Retry date. Folded into followUpDate
+    // (source "system") by the unified follow-up model; kept as a column so the
+    // migration stays additive. No longer read or written.
     retryDate: date("retry_date"),
-    // Consecutive no-contact attempts — park on the 2nd, reset on contact.
-    noContactAttempts: integer("no_contact_attempts").notNull().default(0),
+    // Running count of non-terminal outreach attempts this cycle. When a
+    // system-default log pushes it to the manager's "attempts before parking",
+    // the company parks instead of getting another follow-up; reset on park.
+    // (DB column kept as no_contact_attempts from its earlier, narrower use.)
+    attemptCount: integer("no_contact_attempts").notNull().default(0),
     // Stable cold-queue position. Set on entry (import/creation, via the
     // default) and reset to now() whenever the company is parked/rested, so
     // re-entrants go to the back. The cold queue orders by this, then priority,
