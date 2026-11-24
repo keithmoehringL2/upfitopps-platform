@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { data } from "@/lib/db/gateway";
 import { brandRampCss } from "@/lib/brand/ramp";
+import { BrandMark } from "@/app/brand-mark";
 
-// Tenant workspace (<slug>.upfitoutreach.com). The proxy rewrites tenant hosts into
-// this `/t/[slug]` segment. Placeholder: it proves host -> tenant resolution and
-// runtime white-label branding. The real rep/manager app renders here.
+// Distributor landing (<slug>.<root>/): the UpfitOutreach logo, the distributor
+// name, and a choice of Manager or Rep sign-in. Served here because the proxy
+// rewrites the tenant root into this /t/[slug] route, which resolves the
+// distributor from the subdomain slug. The distributor's brand color themes it.
 export default async function TenantHome({
   params,
 }: {
@@ -12,67 +15,40 @@ export default async function TenantHome({
 }) {
   const { slug } = await params;
   const distributor = await data.getDistributorBySlug(slug);
-
-  if (!distributor) {
-    notFound();
-  }
+  if (!distributor) notFound();
 
   return (
     <>
-      {/* Per-tenant accent ramp derived from the distributor's primary color. */}
       <style
         dangerouslySetInnerHTML={{
           __html: brandRampCss(distributor.primaryColor, distributor.secondaryColor),
         }}
       />
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px" }}>
-        <div
-          style={{
-            fontSize: 12,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: "var(--neutral-600)",
-          }}
-        >
-          Distributor workspace · {slug}.upfitoutreach.com
-        </div>
-        <h1
-          style={{
-            fontSize: 40,
-            fontWeight: 600,
-            margin: "8px 0 0",
-            color: "var(--accent-700)",
-          }}
-        >
-          {distributor.name}
-        </h1>
-        <p style={{ fontSize: 17, color: "var(--neutral-700)" }}>
-          Host-based tenant routing resolved this subdomain to{" "}
-          <strong>{distributor.id}</strong>. The rep and manager surfaces will
-          render here, branded from this tenant&rsquo;s primary color.
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 24,
-            alignItems: "center",
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "var(--radius-lg)",
-              background: "var(--accent-500)",
-              boxShadow: "var(--shadow-sm)",
-            }}
-          />
-          <code style={{ fontSize: 14, color: "var(--neutral-700)" }}>
-            primary {distributor.primaryColor}
-          </code>
+      <main
+        style={{
+          minHeight: "100dvh",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+          fontFamily: "var(--font-serif)",
+          color: "var(--text)",
+          background: "var(--bg)",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", alignItems: "center", gap: 28, textAlign: "center" }}>
+          <BrandMark height={40} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <h1 style={{ margin: 0, fontSize: 34, fontWeight: 600, lineHeight: 1.15 }}>{distributor.name}</h1>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--neutral-700)" }}>Choose how you&rsquo;d like to sign in.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+            <Link href="/login" className="btn btn-primary" style={{ minHeight: 54, fontSize: 17 }}>
+              <i className="ph-duotone ph-briefcase" style={{ fontSize: 20 }} /><span>Manager login</span>
+            </Link>
+            <Link href="/rep/login" className="btn btn-secondary" style={{ minHeight: 54, fontSize: 17 }}>
+              <i className="ph-duotone ph-steering-wheel" style={{ fontSize: 20 }} /><span>Rep login</span>
+            </Link>
+          </div>
         </div>
       </main>
     </>

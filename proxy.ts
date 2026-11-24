@@ -36,10 +36,14 @@ export function proxy(req: NextRequest) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  // Tenant subdomain (<slug>.<root>): serve the top-level app routes directly.
-  // The rep and manager apps scope themselves by the host-only session cookie,
-  // not by the path, so no rewrite is needed. (Previously this rewrote into a
-  // /t/[slug] segment that has no rep/manager routes, so <slug>.host/rep 404'd —
-  // the exact URL the daily email and rep sign-in links point to.)
+  // Tenant subdomain (<slug>.<root>): the bare root shows a per-distributor
+  // landing page (the /t/[slug] route resolves the distributor by slug). Every
+  // other path is a top-level app route served directly — the rep and manager
+  // apps scope themselves by the host-only session cookie, not the path.
+  if (url.pathname === "/") {
+    const dest = url.clone();
+    dest.pathname = `/t/${resolved.slug}`;
+    return NextResponse.rewrite(dest);
+  }
   return NextResponse.next();
 }
