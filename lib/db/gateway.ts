@@ -1269,6 +1269,7 @@ export const data = {
       note: string | null;
       source: "rep" | "system" | null;
       reason: string | null;
+      intervalDays: number | null;
       kind: "follow_up" | "touch_base";
     };
 
@@ -1290,6 +1291,7 @@ export const data = {
         note: c.followUpNote,
         source,
         reason: source === "system" && last ? (outcomeMeta(last)?.label ?? null) : null,
+        intervalDays: null,
         kind: "follow_up",
       };
       if (dueDate <= today) due.push(row);
@@ -1315,6 +1317,7 @@ export const data = {
           note: `Customer check-in every ${interval} days`,
           source: null,
           reason: null,
+          intervalDays: interval,
           kind: "touch_base",
         });
       }

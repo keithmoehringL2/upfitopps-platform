@@ -52,6 +52,7 @@ export default async function RepQueuePage({
       industryPrimary: r.industryPrimary,
       lastTouchDate: r.lastTouchDate,
       dueDate: r.dueDate,
+      intervalDays: r.intervalDays,
       note: r.note,
     }));
 

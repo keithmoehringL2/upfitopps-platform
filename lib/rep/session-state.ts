@@ -28,6 +28,25 @@ export function markSkipped(companyId: string): void {
   }
 }
 
+// Date-keyed snapshot of the rows that were due when the day started, per
+// category. Worked items leave the server's "due" list (their date moves), so
+// we keep the morning set here to still show them as "done today" and to keep
+// the counter's total stable. Idempotent: merges in anything newly due.
+export function getDaySnapshot<T extends { id: string }>(category: string, currentDue: T[]): T[] {
+  const key = `upfit:snap:${category}:${todayKey()}`;
+  try {
+    const raw = localStorage.getItem(key);
+    const stored = raw ? (JSON.parse(raw) as T[]) : [];
+    const byId = new Map<string, T>(stored.map((r) => [r.id, r]));
+    for (const r of currentDue) if (!byId.has(r.id)) byId.set(r.id, r);
+    const merged = [...byId.values()];
+    localStorage.setItem(key, JSON.stringify(merged));
+    return merged;
+  } catch {
+    return currentDue;
+  }
+}
+
 /** Queue a toast to show after the next navigation (read once by the ToastHost). */
 export function queueToast(text: string): void {
   try {

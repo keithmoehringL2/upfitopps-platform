@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { brandRampVars } from "@/lib/brand/ramp";
 import { repLogout } from "@/lib/rep/actions";
+import { getDaySnapshot, getSkipped } from "@/lib/rep/session-state";
 import { QueueList, type QueueRow } from "./queue-list";
 import { FollowUps, type Reminder } from "./follow-ups";
 import { CustomersList, type CustomerRow } from "./customers-list";
@@ -49,6 +50,22 @@ export function RepHome(props: Props) {
 
   const [panel, setPanel] = useState<PanelKey | null>(initialPanel);
 
+  // Done-today, computed from the day-start snapshot ∩ worked-today (both live
+  // in the browser), so worked follow-ups/customers keep counting toward "done".
+  const [fuStat, setFuStat] = useState({ done: 0, total: followUpsDue.length, firstOpen: followUpsDue[0]?.id ?? null });
+  const [custStat, setCustStat] = useState({ done: 0, total: customersDue.length, firstOpen: customersDue[0]?.id ?? null });
+
+  useEffect(() => {
+    const doneSet = new Set(doneIds);
+    const skip = getSkipped();
+    const fuSnap = getDaySnapshot("followups", followUpsDue);
+    const fuOpen = fuSnap.filter((r) => !doneSet.has(r.id) && !skip.has(r.id));
+    setFuStat({ done: fuSnap.filter((r) => doneSet.has(r.id)).length, total: fuSnap.length, firstOpen: fuOpen[0]?.id ?? null });
+    const custSnap = getDaySnapshot("customers", customersDue);
+    const custOpen = custSnap.filter((c) => !doneSet.has(c.id));
+    setCustStat({ done: custSnap.filter((c) => doneSet.has(c.id)).length, total: custSnap.length, firstOpen: custOpen[0]?.id ?? null });
+  }, [doneIds, followUpsDue, customersDue]);
+
   // Keep panel state and the URL in sync so Back closes the panel and a company
   // round-trip (open → back) restores it, and email deep-links land on a card.
   useEffect(() => {
@@ -56,6 +73,9 @@ export function RepHome(props: Props) {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  const fuOpenCount = Math.max(0, fuStat.total - fuStat.done);
+  const custOpenCount = Math.max(0, custStat.total - custStat.done);
 
   const open = (key: PanelKey) => {
     setPanel(key);
@@ -121,9 +141,9 @@ export function RepHome(props: Props) {
           icon="ph-bell-ringing"
           title="Follow Ups"
           description="Follow up on previous attempts or conversations."
-          number={followUpsDue.length}
+          number={fuOpenCount}
           numberLabel="DUE"
-          status={followUpsDue.length > 0 ? `${followUpsDue.length} to follow up` : "Nothing due today"}
+          status={fuStat.total > 0 ? `${fuStat.done} of ${fuStat.total} done` : "Nothing due today"}
           fill="var(--accent-100)"
           onClick={() => open("followups")}
         />
@@ -142,9 +162,9 @@ export function RepHome(props: Props) {
           icon="ph-user-check"
           title="Customers"
           description="Check in with these past customers."
-          number={customersDue.length}
+          number={custOpenCount}
           numberLabel="DUE"
-          status={customersDue.length > 0 ? `${customersDue.length} to check in` : "None due"}
+          status={custStat.total > 0 ? `${custStat.done} of ${custStat.total} checked in` : "None due"}
           fill="var(--neutral-200)"
           onClick={() => open("customers")}
         />
@@ -179,18 +199,18 @@ export function RepHome(props: Props) {
           description="Follow up on previous attempts or conversations."
           onClose={close}
           counter={
-            followUpsDue.length > 0
+            fuStat.total > 0
               ? {
-                  done: 0,
-                  total: followUpsDue.length,
+                  done: fuStat.done,
+                  total: fuStat.total,
                   unit: "done",
-                  toGoLabel: `${followUpsDue.length} to go`,
-                  start: { href: `/rep/company/${followUpsDue[0].id}` },
+                  toGoLabel: fuOpenCount > 0 ? `${fuOpenCount} to go` : "All done",
+                  start: fuStat.firstOpen ? { href: `/rep/company/${fuStat.firstOpen}` } : null,
                 }
               : null
           }
         >
-          <FollowUps due={followUpsDue} upcoming={followUpsUpcoming} />
+          <FollowUps due={followUpsDue} upcoming={followUpsUpcoming} doneIds={doneIds} />
         </CategoryPanel>
       )}
 
@@ -219,18 +239,18 @@ export function RepHome(props: Props) {
           description="Check in with these past customers."
           onClose={close}
           counter={
-            customersDue.length > 0
+            custStat.total > 0
               ? {
-                  done: 0,
-                  total: customersDue.length,
+                  done: custStat.done,
+                  total: custStat.total,
                   unit: "checked in",
-                  toGoLabel: `${customersDue.length} to go`,
-                  start: { href: `/rep/company/${customersDue[0].id}` },
+                  toGoLabel: custOpenCount > 0 ? `${custOpenCount} to go` : "All done",
+                  start: custStat.firstOpen ? { href: `/rep/company/${custStat.firstOpen}` } : null,
                 }
               : null
           }
         >
-          <CustomersList due={customersDue} />
+          <CustomersList due={customersDue} doneIds={doneIds} />
         </CategoryPanel>
       )}
 
