@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "./login-form";
+import { BrandMark } from "@/app/brand-mark";
 
 // Manager login (apex). Reps use passwordless email links; manufacturers use
 // the separate portal.
@@ -17,9 +18,9 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 380 }}>
         <Link
           href="/"
-          style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)", textDecoration: "none" }}
+          style={{ display: "inline-block", textDecoration: "none" }}
         >
-          UpfitOutreach
+          <BrandMark height={30} />
         </Link>
         <h1 style={{ fontSize: 34, fontWeight: 600, margin: "24px 0 4px" }}>Sign in</h1>
         <p style={{ fontSize: 14, color: "var(--neutral-600)", marginTop: 0 }}>

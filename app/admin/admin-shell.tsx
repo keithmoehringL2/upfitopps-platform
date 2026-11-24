@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { adminLogout } from "@/lib/auth/actions";
+import { BrandMark } from "@/app/brand-mark";
 
 // Shared L2 Admin chrome: platform-red top bar + nav (Distributors /
 // Manufacturers) + the signed-in admin and sign-out. The admin chrome is always
@@ -39,7 +40,7 @@ export function AdminShell({
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>UpfitOutreach</span>
+          <BrandMark height={32} />
           <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>L2 Admin</span>
         </div>
         <nav style={{ display: "flex", gap: 28 }}>

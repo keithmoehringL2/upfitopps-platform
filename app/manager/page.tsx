@@ -59,6 +59,7 @@ export default async function ManagerOverviewPage({
       brandName={distributor?.name ?? "Distributor"}
       primaryColor={distributor?.primaryColor}
       secondaryColor={distributor?.secondaryColor}
+      logoUrl={distributor?.logoUrl}
       userEmail={user?.email}
       active="overview"
     >

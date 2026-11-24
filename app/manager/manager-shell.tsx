@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { brandRampVars } from "@/lib/brand/ramp";
+import { BrandMark } from "@/app/brand-mark";
 import { UserMenu } from "./user-menu";
 
 // Shared manager chrome: branded top bar + nav, matching the Manager desktop
@@ -8,6 +9,7 @@ export function ManagerShell({
   brandName,
   primaryColor,
   secondaryColor,
+  logoUrl,
   userEmail,
   active,
   children,
@@ -15,6 +17,7 @@ export function ManagerShell({
   brandName: string;
   primaryColor?: string;
   secondaryColor?: string | null;
+  logoUrl?: string | null;
   userEmail?: string;
   active: "overview" | "companies" | "settings";
   children: React.ReactNode;
@@ -45,8 +48,8 @@ export function ManagerShell({
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-500)" }}>{brandName}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <BrandMark logoUrl={logoUrl} name={brandName} height={30} />
           <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>Manager</span>
         </div>
         <nav style={{ display: "flex", gap: 28 }}>

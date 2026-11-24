@@ -1,4 +1,5 @@
 import { PortalLoginForm } from "./login-form";
+import { BrandMark } from "@/app/brand-mark";
 
 // Manufacturer portal sign-in. Served on the reserved `portal` subdomain (proxy
 // rewrites portal.<root>/login → /portal/login).
@@ -16,7 +17,7 @@ export default function PortalLoginPage() {
       }}
     >
       <div style={{ width: "100%", maxWidth: 420 }}>
-        <span style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)" }}>UpfitOutreach</span>
+        <BrandMark height={30} />
         <h1 style={{ fontSize: 34, fontWeight: 600, margin: "24px 0 4px" }}>Manufacturer sign-in</h1>
         <p style={{ fontSize: 14, color: "var(--neutral-600)", marginTop: 0 }}>
           Program reporting for manufacturer partners.

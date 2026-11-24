@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RepLoginForm } from "./rep-login-form";
+import { BrandMark } from "@/app/brand-mark";
 
 // Rep passwordless login (mobile-first). Reps never set a password — they
 // request a one-time link and the device holds a long-lived session after.
@@ -23,9 +24,9 @@ export default async function RepLoginPage({
       <div style={{ width: "100%", maxWidth: 420 }}>
         <Link
           href="/"
-          style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)", textDecoration: "none" }}
+          style={{ display: "inline-block", textDecoration: "none" }}
         >
-          UpfitOutreach
+          <BrandMark height={30} />
         </Link>
         <h1 style={{ fontSize: 32, fontWeight: 600, margin: "24px 0 4px" }}>Rep sign-in</h1>
         <p style={{ fontSize: 15, color: "var(--neutral-600)", marginTop: 0 }}>

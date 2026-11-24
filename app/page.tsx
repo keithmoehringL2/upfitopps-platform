@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/app/brand-mark";
 
 // Apex (upfitoutreach.com): the public one-page site + the front door to sign in.
 // This is a placeholder for the real marketing one-pager — structure and
@@ -21,9 +22,7 @@ export default function HomePage() {
           borderBottom: "1px solid var(--divider)",
         }}
       >
-        <span style={{ fontSize: 20, fontWeight: 600, color: "var(--accent-700)" }}>
-          UpfitOutreach
-        </span>
+        <BrandMark height={34} />
         <Link
           href="/login"
           style={{

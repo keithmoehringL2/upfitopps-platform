@@ -37,6 +37,7 @@ export default async function ManagerCompaniesPage({
       brandName={distributor?.name ?? "Distributor"}
       primaryColor={distributor?.primaryColor}
       secondaryColor={distributor?.secondaryColor}
+      logoUrl={distributor?.logoUrl}
       userEmail={user?.email}
       active="companies"
     >

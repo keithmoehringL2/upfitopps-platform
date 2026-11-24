@@ -1,4 +1,5 @@
 import { portalLogout } from "@/lib/auth/actions";
+import { BrandMark } from "@/app/brand-mark";
 
 // Manufacturer portal chrome: platform-red header with the manufacturer name, a
 // scope tag, the signed-in user and sign-out. Aggregate-only reporting — no
@@ -29,7 +30,7 @@ export function PortalShell({
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--accent-700)" }}>UpfitOutreach</span>
+          <BrandMark height={32} />
           <span style={{ fontSize: 15, fontWeight: 600 }}>{manufacturerName}</span>
           <span style={{ fontSize: 13, color: "var(--neutral-700)" }}>Program reporting</span>
         </div>

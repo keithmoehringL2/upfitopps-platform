@@ -11,6 +11,7 @@ import { CustomersList, type CustomerRow } from "./customers-list";
 import { ZipSearch } from "./zip-search";
 import { LeadersPanel, type Board } from "./leaders-panel";
 import { CategoryPanel, type PanelCounter } from "./category-panel";
+import { BrandMark } from "@/app/brand-mark";
 
 export type PanelKey = "followups" | "prospects" | "customers" | "zip" | "leaders";
 const CARD_PANELS: PanelKey[] = ["followups", "prospects", "customers", "zip", "leaders"];
@@ -23,6 +24,7 @@ function panelFromUrl(): PanelKey | null {
 
 interface Props {
   distributorName: string;
+  logoUrl: string | null;
   primaryColor: string | null;
   secondaryColor: string | null;
   userEmail: string;
@@ -43,7 +45,7 @@ interface Props {
 
 export function RepHome(props: Props) {
   const {
-    distributorName, primaryColor, secondaryColor, userEmail, dateLine, repName,
+    distributorName, logoUrl, primaryColor, secondaryColor, userEmail, dateLine, repName,
     progress, queue, doneIds, firstOpenId,
     followUpsDue, followUpsUpcoming, customersDue,
     leaderboardEnabled, initialBoard, zipApiKey, initialPanel,
@@ -120,7 +122,7 @@ export function RepHome(props: Props) {
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 18, fontWeight: 600, color: "var(--accent-500)" }}>{distributorName}</span>
+        <BrandMark logoUrl={logoUrl} name={distributorName} height={30} />
         <form action={repLogout} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             aria-hidden
