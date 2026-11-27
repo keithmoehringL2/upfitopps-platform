@@ -214,8 +214,11 @@ export const company = pgTable(
     distributorId: uuid("distributor_id")
       .notNull()
       .references(() => distributor.id),
-    // stable per-distributor upsert key from the prepared CSV
-    externalImportId: text("external_import_id"),
+    // Normalized registrable domain of `website` (e.g. "joesroofing.com"), the
+    // dedupe identity for a company. Computed via lib/util/domain.ts on every
+    // write; null when the company has no usable website. See the matcher in
+    // lib/import/engine.ts for how imports resolve against it.
+    rootDomain: text("root_domain"),
 
     name: text("name").notNull(),
     legalName: text("legal_name"),
@@ -287,13 +290,13 @@ export const company = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("company_distributor_external_uq").on(
-      t.distributorId,
-      t.externalImportId,
-    ),
     index("company_distributor_idx").on(t.distributorId),
     index("company_owner_idx").on(t.ownerUserId),
     index("company_zip_idx").on(t.distributorId, t.zip),
+    // Lookup for domain-based dedupe. Non-unique for now: existing data may hold
+    // duplicate domains; the import path enforces single-match on write. A
+    // partial unique index is deferred until the data is known clean.
+    index("company_distributor_domain_idx").on(t.distributorId, t.rootDomain),
   ],
 );
 

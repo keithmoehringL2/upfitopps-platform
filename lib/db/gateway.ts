@@ -25,7 +25,6 @@ import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
 import { sendWrongNumberAlert } from "../email/alerts";
-import type { CompanyImport } from "../import/csv";
 import {
   mergeSettings,
   type CadenceKey,
@@ -107,9 +106,9 @@ async function buildImportContext(distributorId: string): Promise<DryRunContext>
   const db = getDb();
   const [existing, reps, progs] = await Promise.all([
     db
-      .select({ id: company.id, ext: company.externalImportId, name: company.name, address: company.address, ownerUserId: company.ownerUserId, decisionMaker: company.decisionMaker, followUpDate: company.followUpDate })
+      .select({ id: company.id, domain: company.rootDomain, name: company.name, address: company.address, ownerUserId: company.ownerUserId, decisionMaker: company.decisionMaker, followUpDate: company.followUpDate })
       .from(company)
-      .where(and(eq(company.distributorId, distributorId), isNotNull(company.externalImportId))),
+      .where(and(eq(company.distributorId, distributorId), isNotNull(company.rootDomain))),
     db
       .select({ email: user.email, id: user.id })
       .from(user)
@@ -121,17 +120,18 @@ async function buildImportContext(distributorId: string): Promise<DryRunContext>
       .where(and(eq(programDistributor.distributorId, distributorId), isNotNull(manufacturerProgram.code))),
   ]);
 
-  const existingByExtId = new Map<string, ExistingCompany>();
-  const nameAddrToExtIds = new Map<string, string[]>();
+  const existingByDomain = new Map<string, ExistingCompany>();
   for (const c of existing) {
-    const ext = c.ext as string;
-    existingByExtId.set(ext, { id: c.id, name: c.name, address: c.address, ownerUserId: c.ownerUserId, hasDm: c.decisionMaker != null, hasFollowUp: c.followUpDate != null });
-    const key = `${c.name.trim().toLowerCase()}|${(c.address ?? "").trim().toLowerCase()}`;
-    nameAddrToExtIds.set(key, [...(nameAddrToExtIds.get(key) ?? []), ext]);
+    const domain = c.domain as string;
+    // On the off chance the data already holds two rows for one domain (the
+    // index is non-unique for now), keep the first — the commit still updates a
+    // single company id.
+    if (!existingByDomain.has(domain)) {
+      existingByDomain.set(domain, { id: c.id, name: c.name, address: c.address, ownerUserId: c.ownerUserId, hasDm: c.decisionMaker != null, hasFollowUp: c.followUpDate != null });
+    }
   }
   return {
-    existingByExtId,
-    nameAddrToExtIds,
+    existingByDomain,
     repEmailToId: new Map(reps.map((r) => [r.email.toLowerCase(), r.id])),
     programCodeToId: new Map(progs.filter((p) => p.code).map((p) => [p.code as string, p.id])),
   };
@@ -1100,11 +1100,11 @@ export const data = {
     const dctx = await buildImportContext(distributorId);
     const dry = runDryRun(parseCsv(csvText), columnMap, dctx);
 
-    const updateExtIds = dry.records.filter((r) => r.isUpdate).map((r) => r.externalId);
+    const updateIds = dry.records.filter((r) => r.isUpdate && r.matchCompanyId).map((r) => r.matchCompanyId!);
     const existingFull = new Map<string, typeof company.$inferSelect>();
-    if (updateExtIds.length > 0) {
-      const fulls = await db.select().from(company).where(and(eq(company.distributorId, distributorId), inArray(company.externalImportId, updateExtIds)));
-      for (const f of fulls) if (f.externalImportId) existingFull.set(f.externalImportId, f);
+    if (updateIds.length > 0) {
+      const fulls = await db.select().from(company).where(and(eq(company.distributorId, distributorId), inArray(company.id, updateIds)));
+      for (const f of fulls) existingFull.set(f.id, f);
     }
 
     const batchId = await db.transaction(async (tx) => {
@@ -1118,13 +1118,13 @@ export const data = {
         if (!rec.isUpdate) {
           const [ins] = await tx
             .insert(company)
-            .values({ distributorId, externalImportId: rec.externalId, ...descriptiveFields(rec.fields), ownerUserId: rec.ownerUserId, sourceProgramId: rec.sourceProgramId })
+            .values({ distributorId, rootDomain: rec.rootDomain, ...descriptiveFields(rec.fields), ownerUserId: rec.ownerUserId, sourceProgramId: rec.sourceProgramId })
             .returning({ id: company.id });
           changeRows.push({ importBatchId: batch.id, companyId: ins.id, wasInsert: true, before: null });
         } else {
-          const ex = existingFull.get(rec.externalId)!;
-          const before = { ...descriptiveFields(ex), ownerUserId: ex.ownerUserId };
-          const set: Partial<typeof company.$inferInsert> = { ...descriptiveFields(rec.fields), updatedAt: new Date() };
+          const ex = existingFull.get(rec.matchCompanyId!)!;
+          const before = { ...descriptiveFields(ex), rootDomain: ex.rootDomain, ownerUserId: ex.ownerUserId };
+          const set: Partial<typeof company.$inferInsert> = { ...descriptiveFields(rec.fields), rootDomain: rec.rootDomain, updatedAt: new Date() };
           if (overrides.owner) set.ownerUserId = rec.ownerUserId;
           await tx.update(company).set(set).where(eq(company.id, ex.id));
           changeRows.push({ importBatchId: batch.id, companyId: ex.id, wasInsert: false, before: before as never });
@@ -1901,61 +1901,6 @@ export const data = {
       )
       .returning({ id: company.id });
     return changed.length;
-  },
-
-  /**
-   * Upsert imported companies into the manager's distributor, deduped on
-   * external_import_id. Updates only descriptive fields — a rep's owner,
-   * lifecycle, suppression and cadence are preserved on re-import.
-   */
-  async importCompanies(ctx: AuthContext, companies: CompanyImport[]) {
-    const distributorId = requireManager(ctx);
-    if (companies.length === 0) return { inserted: 0, updated: 0 };
-    const db = getDb();
-
-    const ids = companies.map((c) => c.externalImportId);
-    const existingRows = await db
-      .select({ ext: company.externalImportId })
-      .from(company)
-      .where(
-        and(
-          eq(company.distributorId, distributorId),
-          inArray(company.externalImportId, ids),
-        ),
-      );
-    const existing = new Set(existingRows.map((r) => r.ext));
-
-    await db
-      .insert(company)
-      .values(companies.map((c) => ({ distributorId, ...c })))
-      .onConflictDoUpdate({
-        target: [company.distributorId, company.externalImportId],
-        set: {
-          name: sql`excluded.name`,
-          address: sql`excluded.address`,
-          city: sql`excluded.city`,
-          state: sql`excluded.state`,
-          zip: sql`excluded.zip`,
-          phone: sql`excluded.phone`,
-          website: sql`excluded.website`,
-          industryPrimary: sql`excluded.industry_primary`,
-          industrySub: sql`excluded.industry_sub`,
-          description: sql`excluded.description`,
-          totalVehicles: sql`excluded.total_vehicles`,
-          truckCount: sql`excluded.truck_count`,
-          vanCount: sql`excluded.van_count`,
-          fleetMix: sql`excluded.fleet_mix`,
-          priorityScore: sql`excluded.priority_score`,
-          priorityExplanation: sql`excluded.priority_explanation`,
-          placeId: sql`excluded.place_id`,
-          latitude: sql`excluded.latitude`,
-          longitude: sql`excluded.longitude`,
-          updatedAt: new Date(),
-        },
-      });
-
-    const updated = companies.filter((c) => existing.has(c.externalImportId)).length;
-    return { inserted: companies.length - updated, updated };
   },
 
   // ───────────────────────── Manager: overview, team, settings ─────────────

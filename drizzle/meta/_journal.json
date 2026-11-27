@@ -78,6 +78,20 @@
       "when": 1795524994701,
       "tag": "0010_famous_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795788893322,
+      "tag": "0011_add_root_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795788904430,
+      "tag": "0012_drop_external_import_id",
+      "breakpoints": true
     }
   ]
 }

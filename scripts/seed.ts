@@ -12,6 +12,7 @@ import {
   user,
 } from "../lib/db/schema";
 import { hashPassword } from "../lib/auth/password";
+import { rootDomain } from "../lib/util/domain";
 import { SEED_IDS as ID } from "./seed-ids";
 
 // Dev-only passwords for the seeded manager, L2 admin and manufacturer users.
@@ -92,11 +93,10 @@ async function main() {
 
   await db
     .insert(company)
-    .values([
+    .values(([
       {
         id: ID.co1,
         distributorId: ID.distTruck,
-        externalImportId: "TC-001",
         name: "Northside Plumbing",
         address: "4100 N Lamar Blvd",
         city: "Austin",
@@ -120,7 +120,6 @@ async function main() {
       {
         id: ID.co2,
         distributorId: ID.distTruck,
-        externalImportId: "TC-002",
         name: "Lone Star HVAC",
         city: "Austin",
         zip: "78702",
@@ -134,7 +133,6 @@ async function main() {
       {
         id: ID.co3,
         distributorId: ID.distDemo,
-        externalImportId: "DM-001",
         name: "Acme Electrical",
         city: "Dallas",
         zip: "75201",
@@ -146,7 +144,6 @@ async function main() {
       {
         id: ID.co4,
         distributorId: ID.distTruck,
-        externalImportId: "TC-004",
         name: "Capital Metro Electric",
         address: "1400 E 6th St",
         city: "Austin",
@@ -170,7 +167,6 @@ async function main() {
       {
         id: ID.co5,
         distributorId: ID.distTruck,
-        externalImportId: "TC-005",
         name: "Bluebonnet Landscaping",
         address: "905 Round Rock Ave",
         city: "Round Rock",
@@ -193,7 +189,6 @@ async function main() {
       {
         id: ID.co6,
         distributorId: ID.distTruck,
-        externalImportId: "TC-006",
         name: "Hill Country Roofing",
         address: "220 Ranch Rd 620",
         city: "Austin",
@@ -220,7 +215,6 @@ async function main() {
       {
         id: ID.co7,
         distributorId: ID.distTruck,
-        externalImportId: "TC-007",
         name: "Lone Oak Pest Control",
         address: "77 Pflugerville Pkwy",
         city: "Pflugerville",
@@ -246,7 +240,6 @@ async function main() {
       {
         id: ID.co8,
         distributorId: ID.distTruck,
-        externalImportId: "TC-008",
         name: "Riverbend Concrete",
         address: "1201 S Congress Ave",
         city: "Austin",
@@ -270,7 +263,6 @@ async function main() {
       {
         id: ID.co9,
         distributorId: ID.distTruck,
-        externalImportId: "TC-009",
         name: "Summit Mechanical",
         address: "640 Research Blvd",
         city: "Austin",
@@ -294,7 +286,6 @@ async function main() {
       {
         id: ID.co10,
         distributorId: ID.distTruck,
-        externalImportId: "TC-010",
         name: "Cedar Park Catering",
         address: "900 E Whitestone Blvd",
         city: "Cedar Park",
@@ -314,11 +305,11 @@ async function main() {
         touchIntervalDays: 30,
         lastTouchDate: daysFromNow(-45),
       },
-    ])
+    ] as const).map((c) => ({ ...c, rootDomain: rootDomain((c as { website?: string | null }).website ?? null) })))
     // Upsert so re-seeding refreshes fixtures (and resets cadence/lifecycle
-    // state that manual testing may have changed).
+    // state that manual testing may have changed). Keyed on the stable seed UUID.
     .onConflictDoUpdate({
-      target: [company.distributorId, company.externalImportId],
+      target: [company.id],
       set: {
         name: sql`excluded.name`,
         address: sql`excluded.address`,
@@ -327,6 +318,7 @@ async function main() {
         zip: sql`excluded.zip`,
         phone: sql`excluded.phone`,
         website: sql`excluded.website`,
+        rootDomain: sql`excluded.root_domain`,
         industryPrimary: sql`excluded.industry_primary`,
         industrySub: sql`excluded.industry_sub`,
         description: sql`excluded.description`,

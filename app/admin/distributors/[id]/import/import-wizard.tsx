@@ -41,11 +41,11 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
   function useSample() {
     const owner = sampleOwnerEmail, prog = sampleProgramCode;
     const text = [
-      "external_id,company_name,address,city,state,zip,phone,vio_industry,total_vehicles,truck_count,van_count,priority_score,owner_email,program_code",
-      `SAMPLE-100,Riverside Welding,220 Industrial Way,Austin,TX,78744,(512) 555-0200,Welding,12,8,4,4.3,${owner},${prog}`,
-      `SAMPLE-101,Cedar Park HVAC,90 Cypress Dr,Cedar Park,TX,78613,(512) 555-0201,HVAC,9,2,7,3.7,${owner},${prog}`,
-      `SAMPLE-102,Bad Zip Co,3 Industrial,Austin,TX,4810,(512) 555-0202,Plumbing,5,2,3,3.0,,${prog}`,
-      `SAMPLE-103,High Priority Co,4 Industrial,Austin,TX,78701,(512) 555-0203,Plumbing,5,2,3,7.9,,${prog}`,
+      "company_name,website,address,city,state,zip,phone,vio_industry,total_vehicles,truck_count,van_count,priority_score,owner_email,program_code",
+      `Riverside Welding,riversidewelding.com,220 Industrial Way,Austin,TX,78744,(512) 555-0200,Welding,12,8,4,4.3,${owner},${prog}`,
+      `Cedar Park HVAC,cedarparkhvac.com,90 Cypress Dr,Cedar Park,TX,78613,(512) 555-0201,HVAC,9,2,7,3.7,${owner},${prog}`,
+      `Bad Zip Co,badzipco.com,3 Industrial,Austin,TX,4810,(512) 555-0202,Plumbing,5,2,3,3.0,,${prog}`,
+      `High Priority Co,,4 Industrial,Austin,TX,78701,(512) 555-0203,Plumbing,5,2,3,7.9,,${prog}`,
     ].join("\n");
     loadText(text, `${distributorName.toLowerCase().replace(/\W+/g, "-")}-sample.csv`);
   }
@@ -171,7 +171,7 @@ function StepMap({ file, map, setMap, missingRequired, dupFields }: {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 10 }}>
         <span style={{ fontSize: 14, color: "var(--neutral-800)" }}>{mappedCount} of {file.headers.length} columns mapped · {file.headers.length - mappedCount} not imported</span>
-        <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>Matching key: external_id, scoped to this distributor</span>
+        <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>Matching key: website domain, scoped to this distributor</span>
       </div>
       {(missingRequired.length > 0 || dupFields.length > 0) && (
         <p style={{ fontSize: 13, color: "var(--color-accent-2-700, #aa0b56)", margin: 0 }}>
@@ -215,7 +215,7 @@ function StepPreview({ preview, file, owner, setOwner, ack, setAck }: {
   const tiles = [
     { label: "Rows in file", value: c.rows, sub: file?.name ?? "", bad: false },
     { label: "New companies", value: c.created, sub: "Unassigned unless owner_email is valid", bad: false },
-    { label: "Updates", value: c.updated, sub: "Matched by external_id", bad: false },
+    { label: "Updates", value: c.updated, sub: "Matched by website domain", bad: false },
     { label: "Errors", value: c.skipped, sub: "Skipped, listed below", bad: c.skipped > 0 },
   ];
   const prot = preview.protectedCounts;
@@ -264,7 +264,7 @@ function StepPreview({ preview, file, owner, setOwner, ack, setAck }: {
                 <tbody>
                   {preview.errors.map((e, i) => (
                     <tr key={i}>
-                      <td>{e.row}<div style={{ fontSize: 11, color: "var(--neutral-600)", fontFamily: "monospace" }}>{e.externalId}</div></td>
+                      <td>{e.row}<div style={{ fontSize: 11, color: "var(--neutral-600)" }}>{e.label}</div></td>
                       <td style={{ fontWeight: 600 }}>{e.issue}</td>
                       <td style={{ fontSize: 13, color: "var(--neutral-700)" }}>{e.detail}</td>
                     </tr>

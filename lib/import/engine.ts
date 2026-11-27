@@ -2,6 +2,14 @@
 // distributor's existing companies, reps and programs and passes them in. The
 // engine maps columns to canonical fields, validates each row, and produces the
 // dry-run result and the records to commit.
+//
+// Dedupe identity is the normalized website domain (rootDomain). A row whose
+// domain matches an existing company updates it; a row with no domain match is
+// created (Phase 2 adds a "review" bucket that suggests look-alike matches for
+// domainless rows before creating). company.id (a UUID) remains the permanent
+// internal identity regardless of domain changes.
+
+import { rootDomain } from "@/lib/util/domain";
 
 export interface ImportField {
   key: string;
@@ -10,9 +18,9 @@ export interface ImportField {
 }
 
 // Canonical target fields (matches the Admin prototype, minus candidate_* which
-// has no store yet). 6 required.
+// has no store yet). Companies are deduped by normalized website domain, not an
+// external id — see rootDomain() and the dry-run below.
 export const IMPORT_FIELDS: ImportField[] = [
-  { key: "external_id", label: "External company ID", required: true },
   { key: "company_name", label: "Company name", required: true },
   { key: "address", label: "Street address", required: false },
   { key: "city", label: "City", required: false },
@@ -38,7 +46,6 @@ export const REQUIRED_FIELDS = IMPORT_FIELDS.filter((f) => f.required).map((f) =
 const normalize = (h: string) => h.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 
 const FIELD_ALIASES: Record<string, string> = {
-  "external id": "external_id", "import id": "external_id", id: "external_id",
   "company name": "company_name", company: "company_name", name: "company_name",
   address: "address", "street address": "address", street: "address",
   city: "city", state: "state",
@@ -75,13 +82,11 @@ export type ErrorCode =
   | "bad_zip"
   | "invalid_priority"
   | "unknown_owner"
-  | "conflicting_program"
-  | "duplicate_id"
-  | "ambiguous_match";
+  | "conflicting_program";
 
 export interface RowError {
   row: number; // 1-based row number in the file (incl. header)
-  externalId: string;
+  label: string; // company name (for display, replaces the old external id)
   code: ErrorCode;
   issue: string;
   detail: string;
@@ -89,7 +94,9 @@ export interface RowError {
 
 export interface MappedRecord {
   row: number;
-  externalId: string;
+  label: string; // company name, for display
+  rootDomain: string | null; // normalized dedupe domain, null when no website
+  matchCompanyId: string | null; // existing company id when this row updates one
   isUpdate: boolean;
   ownerUserId: string | null;
   sourceProgramId: string | null;
@@ -114,8 +121,7 @@ export interface ExistingCompany {
 }
 
 export interface DryRunContext {
-  existingByExtId: Map<string, ExistingCompany>;
-  nameAddrToExtIds: Map<string, string[]>; // normalized "name|address" → extIds
+  existingByDomain: Map<string, ExistingCompany>; // rootDomain → existing company
   repEmailToId: Map<string, string>;
   programCodeToId: Map<string, string>;
 }
@@ -131,8 +137,6 @@ const toInt = (v: string): number | null => {
   const n = parseInt(v.replace(/[^0-9-]/g, ""), 10);
   return Number.isFinite(n) ? n : null;
 };
-const nameAddrKey = (name: string, address: string | null) =>
-  `${name.trim().toLowerCase()}|${(address ?? "").trim().toLowerCase()}`;
 
 const ISSUE: Record<ErrorCode, string> = {
   missing_required: "Missing required field",
@@ -140,8 +144,6 @@ const ISSUE: Record<ErrorCode, string> = {
   invalid_priority: "Invalid priority score",
   unknown_owner: "Unknown owner email",
   conflicting_program: "Conflicting program",
-  duplicate_id: "Duplicate external ID",
-  ambiguous_match: "Ambiguous match",
 };
 
 /** Validate + map the parsed CSV rows against the distributor's current data. */
@@ -158,7 +160,9 @@ export function runDryRun(
 
   const headers = rows[0];
   const fieldOf = headers.map((h) => columnMap[h] ?? "");
-  const seen = new Set<string>();
+  // In-file dedupe by domain: a later row with the same domain replaces the
+  // earlier one (last wins), matching how a re-import updates in place.
+  const domainToIndex = new Map<string, number>();
   let rowCount = 0;
 
   for (let r = 1; r < rows.length; r++) {
@@ -167,9 +171,9 @@ export function runDryRun(
     const rec: Record<string, string> = {};
     fieldOf.forEach((f, c) => { if (f) rec[f] = (cells[c] ?? "").trim(); });
 
-    const externalId = rec.external_id ?? "";
+    const label = rec.company_name ?? "";
     const rowNum = r + 1;
-    const fail = (code: ErrorCode, detail: string) => errors.push({ row: rowNum, externalId, code, issue: ISSUE[code], detail });
+    const fail = (code: ErrorCode, detail: string) => errors.push({ row: rowNum, label, code, issue: ISSUE[code], detail });
 
     // Required fields present?
     const missing = REQUIRED_FIELDS.find((k) => !(rec[k] && rec[k].trim()));
@@ -190,21 +194,16 @@ export function runDryRun(
     const sourceProgramId = ctx.programCodeToId.get(rec.program_code.trim()) ?? null;
     if (!sourceProgramId) { fail("conflicting_program", `${rec.program_code} is not a program for this distributor`); continue; }
 
-    if (seen.has(externalId)) { fail("duplicate_id", "Appears more than once in the file"); continue; }
-    seen.add(externalId);
+    // Dedupe identity: the normalized website domain. A domain match updates the
+    // existing company (its UUID is kept); no match is a create.
+    const domain = rootDomain(rec.website);
+    const existing = domain ? ctx.existingByDomain.get(domain) ?? null : null;
 
-    const existing = ctx.existingByExtId.get(externalId);
-    if (!existing) {
-      const collide = ctx.nameAddrToExtIds.get(nameAddrKey(rec.company_name, rec.address ?? null)) ?? [];
-      if (collide.length > 0 && !collide.includes(externalId)) {
-        fail("ambiguous_match", `Matches ${collide.length} existing compan${collide.length === 1 ? "y" : "ies"} by name and address; resolve before import`);
-        continue;
-      }
-    }
-
-    records.push({
+    const record: MappedRecord = {
       row: rowNum,
-      externalId,
+      label,
+      rootDomain: domain,
+      matchCompanyId: existing?.id ?? null,
       isUpdate: !!existing,
       ownerUserId,
       sourceProgramId,
@@ -226,13 +225,21 @@ export function runDryRun(
         priorityExplanation: rec.priority_note || null,
         touchIntervalDays: rec.touch_interval_days ? toInt(rec.touch_interval_days) : null,
       },
-    });
+    };
+
+    if (domain && domainToIndex.has(domain)) {
+      records[domainToIndex.get(domain)!] = record; // later row wins
+    } else {
+      if (domain) domainToIndex.set(domain, records.length);
+      records.push(record);
+    }
   }
 
   const updates = records.filter((x) => x.isUpdate);
   const protectedCounts = { owner: 0, pdm: 0, fu: 0 };
   for (const u of updates) {
-    const ex = ctx.existingByExtId.get(u.externalId)!;
+    const ex = u.rootDomain ? ctx.existingByDomain.get(u.rootDomain) : null;
+    if (!ex) continue;
     if (ex.ownerUserId) protectedCounts.owner++;
     if (ex.hasDm) protectedCounts.pdm++;
     if (ex.hasFollowUp) protectedCounts.fu++;
