@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/auth/dal";
 import { data } from "@/lib/db/gateway";
 import type { SlugState } from "@/lib/db/gateway";
+import type { ImportDecisions } from "@/lib/import/engine";
 import { createPasswordSetupToken } from "@/lib/auth/password-setup";
 import { createRepLoginToken } from "@/lib/auth/rep-token";
 import { apexBaseUrl, portalBaseUrl, tenantBaseUrl } from "@/lib/tenancy/resolve";
@@ -209,11 +210,12 @@ export async function commitImportAction(
   columnMap: Record<string, string>,
   overrides: { owner?: boolean },
   filename: string,
+  decisions: ImportDecisions = {},
 ): Promise<{ ok: true; batchId: string; counts: { rows: number; created: number; updated: number; skipped: number } } | { ok: false; error: string }> {
   const ctx = await adminCtx();
   if (!ctx) return { ok: false, error: "Not signed in as an admin." };
   try {
-    const res = await data.commitImport(ctx, distributorId, csvText, columnMap, overrides, filename);
+    const res = await data.commitImport(ctx, distributorId, csvText, columnMap, overrides, filename, decisions);
     revalidatePath(`/distributors/${distributorId}`);
     revalidatePath("/");
     return { ok: true, ...res };

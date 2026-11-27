@@ -8,7 +8,11 @@ import { IMPORT_FIELDS, REQUIRED_FIELDS, autoMap } from "@/lib/import/engine";
 import { previewImportAction, commitImportAction, rollbackImportAction, type PreviewResult } from "@/lib/admin/actions";
 
 type Preview = Extract<PreviewResult, { ok: true }>["result"];
-const STEPS = ["Upload", "Map columns", "Preview", "Done"] as const;
+type ReviewRow = Preview["reviews"][number];
+// Post-commit counts (decisions already applied, so no separate review bucket).
+type CommitCounts = { rows: number; created: number; updated: number; skipped: number };
+type Decision = { action: "create" | "merge" | "skip"; mergeTargetId?: string };
+const STEPS = ["Upload", "Map columns", "Preview", "Review", "Done"] as const;
 
 interface FileState { name: string; text: string; headers: string[]; sample: string[]; rowCount: number }
 
@@ -24,7 +28,8 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
   const [error, setError] = useState("");
   const [owner, setOwner] = useState(false);
   const [ack, setAck] = useState(false);
-  const [committed, setCommitted] = useState<{ counts: Preview["counts"]; batchId: string } | null>(null);
+  const [decisions, setDecisions] = useState<Record<number, Decision>>({});
+  const [committed, setCommitted] = useState<{ counts: CommitCounts; batchId: string } | null>(null);
   const [rolledBack, setRolledBack] = useState(false);
 
   function loadText(text: string, name: string) {
@@ -32,7 +37,7 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
     const headers = rows[0] ?? [];
     setFile({ name, text, headers, sample: rows[1] ?? [], rowCount: Math.max(0, rows.length - 1) });
     setMap(autoMap(headers));
-    setPreview(null); setAck(false); setOwner(false);
+    setPreview(null); setAck(false); setOwner(false); setDecisions({});
   }
   async function onFile(f: File | null) {
     if (!f) return;
@@ -67,9 +72,9 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
   async function commit() {
     if (!file) return;
     setBusy(true); setError("");
-    const res = await commitImportAction(distributorId, file.text, map, { owner }, file.name);
+    const res = await commitImportAction(distributorId, file.text, map, { owner }, file.name, decisions);
     setBusy(false);
-    if (res.ok) { setCommitted({ counts: res.counts, batchId: res.batchId }); setStep(4); router.refresh(); }
+    if (res.ok) { setCommitted({ counts: res.counts, batchId: res.batchId }); setStep(5); router.refresh(); }
     else setError(res.error);
   }
 
@@ -82,9 +87,11 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
     else setError(res.error);
   }
 
+  const hasReview = !!preview && preview.counts.review > 0;
   async function next() {
     if (step === 2) { await runPreview(); setStep(3); }
-    else if (step === 3) { await commit(); }
+    else if (step === 3) { if (hasReview) setStep(4); else await commit(); }
+    else if (step === 4) { await commit(); }
     else setStep((s) => s + 1);
   }
   const nextDisabled =
@@ -120,14 +127,15 @@ export function ImportWizard({ distributorId, distributorName, sampleOwnerEmail,
         {step === 1 && <StepUpload file={file} onFile={onFile} useSample={useSample} />}
         {step === 2 && file && <StepMap file={file} map={map} setMap={setMap} missingRequired={missingRequired} dupFields={dupFields} />}
         {step === 3 && <StepPreview preview={preview} file={file} owner={owner} setOwner={setOwner} ack={ack} setAck={setAck} />}
-        {step === 4 && committed && <StepDone committed={committed} rolledBack={rolledBack} rollback={rollback} busy={busy} distributorId={distributorId} />}
+        {step === 4 && preview && <StepReview reviews={preview.reviews} decisions={decisions} setDecisions={setDecisions} />}
+        {step === 5 && committed && <StepDone committed={committed} rolledBack={rolledBack} rollback={rollback} busy={busy} distributorId={distributorId} />}
       </div>
 
-      {step < 4 && (
+      {step < 5 && (
         <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12, borderTop: "1px solid var(--divider)" }}>
           {step > 1 ? <button type="button" className="btn btn-secondary" style={{ minHeight: 44 }} disabled={busy} onClick={() => setStep((s) => s - 1)}>Back</button> : <span />}
           <button type="button" className="btn btn-primary" style={{ minHeight: 44, minWidth: 150 }} disabled={nextDisabled} onClick={next}>
-            {busy ? "Working…" : step === 3 ? "Commit import" : "Continue"}
+            {busy ? "Working…" : step === 4 ? "Commit import" : step === 3 ? (hasReview ? "Review matches" : "Commit import") : "Continue"}
           </button>
         </div>
       )}
@@ -213,23 +221,30 @@ function StepPreview({ preview, file, owner, setOwner, ack, setAck }: {
   if (!preview) return <p style={{ fontSize: 14, color: "var(--neutral-700)" }}>Running the dry-run…</p>;
   const c = preview.counts;
   const tiles = [
-    { label: "Rows in file", value: c.rows, sub: file?.name ?? "", bad: false },
-    { label: "New companies", value: c.created, sub: "Unassigned unless owner_email is valid", bad: false },
-    { label: "Updates", value: c.updated, sub: "Matched by website domain", bad: false },
-    { label: "Errors", value: c.skipped, sub: "Skipped, listed below", bad: c.skipped > 0 },
+    { label: "Rows in file", value: c.rows, sub: file?.name ?? "", tone: "" },
+    { label: "New companies", value: c.created, sub: "No domain match", tone: "" },
+    { label: "Updates", value: c.updated, sub: "Matched by website domain", tone: "" },
+    { label: "Needs review", value: c.review, sub: "Possible duplicates", tone: c.review > 0 ? "accent" : "" },
+    { label: "Errors", value: c.skipped, sub: "Skipped, listed below", tone: c.skipped > 0 ? "error" : "" },
   ];
+  const toneColor = (tone: string) => tone === "error" ? "var(--color-accent-2-700, #aa0b56)" : tone === "accent" ? "var(--accent-700)" : "var(--text)";
   const prot = preview.protectedCounts;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 16 }}>
         {tiles.map((t) => (
           <div key={t.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--neutral-700)" }}>{t.label}</span>
-            <span style={{ fontSize: 34, fontWeight: 600, color: t.bad ? "var(--color-accent-2-700, #aa0b56)" : "var(--text)" }}>{t.value}</span>
+            <span style={{ fontSize: 34, fontWeight: 600, color: toneColor(t.tone) }}>{t.value}</span>
             <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>{t.sub}</span>
           </div>
         ))}
       </div>
+      {c.review > 0 && (
+        <p style={{ fontSize: 13, color: "var(--accent-700)", margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <i className="ph-duotone ph-git-merge" /> {c.review} row{c.review === 1 ? "" : "s"} with no website matched existing companies — you&rsquo;ll confirm merge or create on the next step.
+        </p>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40 }}>
         {/* Protected on update */}
@@ -302,8 +317,74 @@ function Locked() {
   return <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--neutral-700)" }}><i className="ph-duotone ph-lock-simple" /> Never replaced</span>;
 }
 
+function StepReview({ reviews, decisions, setDecisions }: {
+  reviews: ReviewRow[]; decisions: Record<number, Decision>; setDecisions: (f: (prev: Record<number, Decision>) => Record<number, Decision>) => void;
+}) {
+  const setD = (row: number, d: Decision) => setDecisions((prev) => ({ ...prev, [row]: d }));
+  const meta = (r: ReviewRow) => [r.city, r.zip, r.phone, r.address].filter(Boolean).join(" · ");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, color: "var(--accent-700)" }}>
+          <i className="ph-duotone ph-git-merge" /> Possible duplicates to review
+        </h4>
+        <p style={{ fontSize: 13, color: "var(--neutral-700)", margin: 0 }}>
+          These rows have no website to match on, but look like companies you already have. Merge into an existing record, or create a new one. Default is to create new.
+        </p>
+      </div>
+
+      {reviews.map((r) => {
+        const cur = decisions[r.row] ?? { action: "create" as const };
+        const name = `decision-${r.row}`;
+        const rowStyle = (active: boolean): React.CSSProperties => ({
+          display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: "var(--radius-md)",
+          border: `1px solid ${active ? "var(--accent-500)" : "var(--neutral-300)"}`,
+          background: active ? "var(--accent-100)" : "transparent", cursor: "pointer",
+        });
+        return (
+          <div key={r.row} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, border: "1px solid var(--divider)", borderRadius: "var(--radius-lg)" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</span>
+              <span style={{ fontSize: 12, color: "var(--neutral-700)" }}>Incoming · row {r.row}{meta(r) ? ` · ${meta(r)}` : ""}</span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {r.suggestions.map((s) => {
+                const active = cur.action === "merge" && cur.mergeTargetId === s.id;
+                return (
+                  <label key={s.id} style={rowStyle(active)}>
+                    <input type="radio" name={name} checked={active} onChange={() => setD(r.row, { action: "merge", mergeTargetId: s.id })} style={{ marginTop: 3, accentColor: "var(--accent-500)" }} />
+                    <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>Merge into {s.name}</span>
+                      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {s.reasons.map((reason) => (
+                          <span key={reason} className="tag tag-accent" style={{ fontSize: 11 }}>{reason}</span>
+                        ))}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+
+              <label style={rowStyle(cur.action === "create")}>
+                <input type="radio" name={name} checked={cur.action === "create"} onChange={() => setD(r.row, { action: "create" })} style={{ marginTop: 3, accentColor: "var(--accent-500)" }} />
+                <span style={{ fontSize: 14 }}>Create a new company</span>
+              </label>
+
+              <label style={rowStyle(cur.action === "skip")}>
+                <input type="radio" name={name} checked={cur.action === "skip"} onChange={() => setD(r.row, { action: "skip" })} style={{ marginTop: 3, accentColor: "var(--neutral-500)" }} />
+                <span style={{ fontSize: 14, color: "var(--neutral-700)" }}>Skip this row (don&rsquo;t import)</span>
+              </label>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function StepDone({ committed, rolledBack, rollback, busy, distributorId }: {
-  committed: { counts: Preview["counts"]; batchId: string }; rolledBack: boolean; rollback: () => void; busy: boolean; distributorId: string;
+  committed: { counts: CommitCounts; batchId: string }; rolledBack: boolean; rollback: () => void; busy: boolean; distributorId: string;
 }) {
   const c = committed.counts;
   const tiles = [

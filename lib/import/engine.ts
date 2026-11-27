@@ -10,6 +10,7 @@
 // internal identity regardless of domain changes.
 
 import { rootDomain } from "@/lib/util/domain";
+import { suggestMatches, type MatchTarget, type ScoredMatch } from "@/lib/match/suggest";
 
 export interface ImportField {
   key: string;
@@ -92,12 +93,27 @@ export interface RowError {
   detail: string;
 }
 
+// How a row resolves: an exact domain match updates, a domainless row with
+// look-alikes needs human review, everything else is a clean create.
+export type RecordStatus = "update" | "create" | "review";
+
+// The admin's per-review-row decision, keyed by the row number in the file.
+// Absent decision ⇒ "create" (the default). "merge" updates mergeTargetId (which
+// must be one of that row's suggestions); "skip" leaves the row out entirely.
+export interface ImportDecision {
+  action: "create" | "merge" | "skip";
+  mergeTargetId?: string;
+}
+export type ImportDecisions = Record<number, ImportDecision>;
+
 export interface MappedRecord {
   row: number;
   label: string; // company name, for display
   rootDomain: string | null; // normalized dedupe domain, null when no website
   matchCompanyId: string | null; // existing company id when this row updates one
-  isUpdate: boolean;
+  status: RecordStatus;
+  isUpdate: boolean; // convenience: status === "update"
+  suggestions: ScoredMatch[]; // look-alike existing companies (review rows only)
   ownerUserId: string | null;
   sourceProgramId: string | null;
   fields: {
@@ -122,6 +138,7 @@ export interface ExistingCompany {
 
 export interface DryRunContext {
   existingByDomain: Map<string, ExistingCompany>; // rootDomain → existing company
+  existingForMatch: MatchTarget[]; // all companies, for fuzzy look-alike matching
   repEmailToId: Map<string, string>;
   programCodeToId: Map<string, string>;
 }
@@ -129,7 +146,7 @@ export interface DryRunContext {
 export interface DryRunResult {
   records: MappedRecord[];
   errors: RowError[];
-  counts: { rows: number; created: number; updated: number; skipped: number };
+  counts: { rows: number; created: number; updated: number; review: number; skipped: number };
   protectedCounts: { owner: number; pdm: number; fu: number };
 }
 
@@ -155,7 +172,7 @@ export function runDryRun(
   const records: MappedRecord[] = [];
   const errors: RowError[] = [];
   if (rows.length < 2) {
-    return { records, errors, counts: { rows: 0, created: 0, updated: 0, skipped: 0 }, protectedCounts: { owner: 0, pdm: 0, fu: 0 } };
+    return { records, errors, counts: { rows: 0, created: 0, updated: 0, review: 0, skipped: 0 }, protectedCounts: { owner: 0, pdm: 0, fu: 0 } };
   }
 
   const headers = rows[0];
@@ -195,16 +212,32 @@ export function runDryRun(
     if (!sourceProgramId) { fail("conflicting_program", `${rec.program_code} is not a program for this distributor`); continue; }
 
     // Dedupe identity: the normalized website domain. A domain match updates the
-    // existing company (its UUID is kept); no match is a create.
+    // existing company (its UUID is kept). With no domain match, look for
+    // look-alike companies (phone/name/address) — any hit sends the row to human
+    // review instead of a blind create; otherwise it's a clean create.
     const domain = rootDomain(rec.website);
     const existing = domain ? ctx.existingByDomain.get(domain) ?? null : null;
+
+    let status: RecordStatus;
+    let suggestions: ScoredMatch[] = [];
+    if (existing) {
+      status = "update";
+    } else {
+      suggestions = suggestMatches(
+        { name: rec.company_name, phone: rec.phone || null, zip: rec.zip || null, address: rec.address || null },
+        ctx.existingForMatch,
+      );
+      status = suggestions.length > 0 ? "review" : "create";
+    }
 
     const record: MappedRecord = {
       row: rowNum,
       label,
       rootDomain: domain,
       matchCompanyId: existing?.id ?? null,
-      isUpdate: !!existing,
+      status,
+      isUpdate: status === "update",
+      suggestions,
       ownerUserId,
       sourceProgramId,
       fields: {
@@ -250,8 +283,9 @@ export function runDryRun(
     errors,
     counts: {
       rows: rowCount,
-      created: records.filter((x) => !x.isUpdate).length,
+      created: records.filter((x) => x.status === "create").length,
       updated: updates.length,
+      review: records.filter((x) => x.status === "review").length,
       skipped: errors.length,
     },
     protectedCounts,

@@ -20,7 +20,10 @@ import {
   runDryRun,
   type DryRunContext,
   type ExistingCompany,
+  type MappedRecord,
+  type ImportDecisions,
 } from "../import/engine";
+import type { MatchTarget } from "../match/suggest";
 import type { AuthContext } from "../auth/context";
 import { isManufacturerRole } from "../auth/context";
 import { outcomeMeta, type OutcomeValue } from "../rep/outcomes";
@@ -105,10 +108,12 @@ async function writeAudit(
 async function buildImportContext(distributorId: string): Promise<DryRunContext> {
   const db = getDb();
   const [existing, reps, progs] = await Promise.all([
+    // All companies — the domain map keys the exact-dedupe; every row (domain or
+    // not) is also a candidate for fuzzy look-alike matching on websiteless rows.
     db
-      .select({ id: company.id, domain: company.rootDomain, name: company.name, address: company.address, ownerUserId: company.ownerUserId, decisionMaker: company.decisionMaker, followUpDate: company.followUpDate })
+      .select({ id: company.id, domain: company.rootDomain, name: company.name, address: company.address, phone: company.phone, zip: company.zip, ownerUserId: company.ownerUserId, decisionMaker: company.decisionMaker, followUpDate: company.followUpDate })
       .from(company)
-      .where(and(eq(company.distributorId, distributorId), isNotNull(company.rootDomain))),
+      .where(eq(company.distributorId, distributorId)),
     db
       .select({ email: user.email, id: user.id })
       .from(user)
@@ -121,17 +126,21 @@ async function buildImportContext(distributorId: string): Promise<DryRunContext>
   ]);
 
   const existingByDomain = new Map<string, ExistingCompany>();
+  const existingForMatch: MatchTarget[] = [];
   for (const c of existing) {
-    const domain = c.domain as string;
-    // On the off chance the data already holds two rows for one domain (the
-    // index is non-unique for now), keep the first — the commit still updates a
-    // single company id.
-    if (!existingByDomain.has(domain)) {
-      existingByDomain.set(domain, { id: c.id, name: c.name, address: c.address, ownerUserId: c.ownerUserId, hasDm: c.decisionMaker != null, hasFollowUp: c.followUpDate != null });
+    existingForMatch.push({ id: c.id, name: c.name, phone: c.phone, zip: c.zip, address: c.address });
+    if (c.domain) {
+      // On the off chance the data already holds two rows for one domain (the
+      // index is non-unique for now), keep the first — the commit still updates a
+      // single company id.
+      if (!existingByDomain.has(c.domain)) {
+        existingByDomain.set(c.domain, { id: c.id, name: c.name, address: c.address, ownerUserId: c.ownerUserId, hasDm: c.decisionMaker != null, hasFollowUp: c.followUpDate != null });
+      }
     }
   }
   return {
     existingByDomain,
+    existingForMatch,
     repEmailToId: new Map(reps.map((r) => [r.email.toLowerCase(), r.id])),
     programCodeToId: new Map(progs.filter((p) => p.code).map((p) => [p.code as string, p.id])),
   };
@@ -1075,7 +1084,20 @@ export const data = {
     requireAdmin(ctx);
     const dctx = await buildImportContext(distributorId);
     const dry = runDryRun(parseCsv(csvText), columnMap, dctx);
-    return { counts: dry.counts, errors: dry.errors, protectedCounts: dry.protectedCounts };
+    // Rows needing human review (domainless look-alikes), with their incoming
+    // details and suggested existing companies, so the wizard can render them.
+    const reviews = dry.records
+      .filter((r) => r.status === "review")
+      .map((r) => ({
+        row: r.row,
+        name: r.label,
+        city: r.fields.city,
+        zip: r.fields.zip,
+        phone: r.fields.phone,
+        address: r.fields.address,
+        suggestions: r.suggestions,
+      }));
+    return { counts: dry.counts, errors: dry.errors, protectedCounts: dry.protectedCounts, reviews };
   },
 
   /**
@@ -1094,18 +1116,47 @@ export const data = {
     columnMap: Record<string, string>,
     overrides: { owner?: boolean },
     filename: string,
+    decisions: ImportDecisions = {},
   ) {
     requireAdmin(ctx);
     const db = getDb();
     const dctx = await buildImportContext(distributorId);
     const dry = runDryRun(parseCsv(csvText), columnMap, dctx);
 
-    const updateIds = dry.records.filter((r) => r.isUpdate && r.matchCompanyId).map((r) => r.matchCompanyId!);
+    // Resolve each row to a concrete operation. Domain matches update; clean
+    // rows insert; review rows follow the admin's decision (default: create).
+    type Op =
+      | { kind: "insert"; rec: MappedRecord }
+      | { kind: "update"; rec: MappedRecord; targetId: string; merge: boolean }
+      | { kind: "skip" };
+    const ops: Op[] = dry.records.map((rec): Op => {
+      if (rec.status === "update") return { kind: "update", rec, targetId: rec.matchCompanyId!, merge: false };
+      if (rec.status === "create") return { kind: "insert", rec };
+      const d = decisions[rec.row] ?? { action: "create" as const };
+      // A merge target must be one of this row's own suggestions (never an
+      // arbitrary id); otherwise fall back to creating a new company.
+      if (d.action === "merge" && d.mergeTargetId && rec.suggestions.some((s) => s.id === d.mergeTargetId)) {
+        return { kind: "update", rec, targetId: d.mergeTargetId, merge: true };
+      }
+      if (d.action === "skip") return { kind: "skip" };
+      return { kind: "insert", rec };
+    });
+
+    const targetIds = [...new Set(ops.flatMap((o) => (o.kind === "update" ? [o.targetId] : [])))];
     const existingFull = new Map<string, typeof company.$inferSelect>();
-    if (updateIds.length > 0) {
-      const fulls = await db.select().from(company).where(and(eq(company.distributorId, distributorId), inArray(company.id, updateIds)));
+    if (targetIds.length > 0) {
+      const fulls = await db.select().from(company).where(and(eq(company.distributorId, distributorId), inArray(company.id, targetIds)));
       for (const f of fulls) existingFull.set(f.id, f);
     }
+
+    // Keep only descriptive fields the file actually carried — a merge of a
+    // websiteless row must not blank out the existing company's data with nulls.
+    const nonNull = (f: ReturnType<typeof descriptiveFields>) =>
+      Object.fromEntries(Object.entries(f).filter(([, v]) => v != null));
+
+    let created = 0;
+    let updated = 0;
+    let skipped = dry.errors.length;
 
     const batchId = await db.transaction(async (tx) => {
       const [batch] = await tx
@@ -1114,36 +1165,48 @@ export const data = {
         .returning({ id: importBatch.id });
 
       const changeRows: (typeof importChange.$inferInsert)[] = [];
-      for (const rec of dry.records) {
-        if (!rec.isUpdate) {
+      for (const op of ops) {
+        if (op.kind === "skip") { skipped++; continue; }
+
+        const ex = op.kind === "update" ? existingFull.get(op.targetId) : undefined;
+        if (op.kind === "insert" || !ex) {
+          // Clean insert (or a merge/update whose target vanished → insert).
+          const { rec } = op;
           const [ins] = await tx
             .insert(company)
             .values({ distributorId, rootDomain: rec.rootDomain, ...descriptiveFields(rec.fields), ownerUserId: rec.ownerUserId, sourceProgramId: rec.sourceProgramId })
             .returning({ id: company.id });
           changeRows.push({ importBatchId: batch.id, companyId: ins.id, wasInsert: true, before: null });
-        } else {
-          const ex = existingFull.get(rec.matchCompanyId!)!;
-          const before = { ...descriptiveFields(ex), rootDomain: ex.rootDomain, ownerUserId: ex.ownerUserId };
-          const set: Partial<typeof company.$inferInsert> = { ...descriptiveFields(rec.fields), rootDomain: rec.rootDomain, updatedAt: new Date() };
-          if (overrides.owner) set.ownerUserId = rec.ownerUserId;
-          await tx.update(company).set(set).where(eq(company.id, ex.id));
-          changeRows.push({ importBatchId: batch.id, companyId: ex.id, wasInsert: false, before: before as never });
+          created++;
+          continue;
         }
+
+        const { rec, merge } = op;
+        const before = { ...descriptiveFields(ex), rootDomain: ex.rootDomain, ownerUserId: ex.ownerUserId };
+        const set: Partial<typeof company.$inferInsert> = merge
+          ? { ...nonNull(descriptiveFields(rec.fields)), updatedAt: new Date() } // coalesce on merge
+          : { ...descriptiveFields(rec.fields), rootDomain: rec.rootDomain, updatedAt: new Date() };
+        if (merge && rec.rootDomain) set.rootDomain = rec.rootDomain; // fill domain if the match had one
+        if (overrides.owner) set.ownerUserId = rec.ownerUserId;
+        await tx.update(company).set(set).where(eq(company.id, ex.id));
+        changeRows.push({ importBatchId: batch.id, companyId: ex.id, wasInsert: false, before: before as never });
+        updated++;
       }
       if (changeRows.length > 0) await tx.insert(importChange).values(changeRows);
 
+      const finalCounts = { rows: dry.counts.rows, created, updated, skipped };
       await writeAudit(tx as unknown as ReturnType<typeof getDb>, {
         distributorId,
         actorUserId: ctx.userId,
         action: "import.committed",
         targetType: "import_batch",
         targetId: batch.id,
-        after: { filename, ...dry.counts, overrides },
+        after: { filename, ...finalCounts, overrides },
       });
       return batch.id;
     });
 
-    return { batchId, counts: dry.counts };
+    return { batchId, counts: { rows: dry.counts.rows, created, updated, skipped } };
   },
 
   /** Reverse a committed import: delete created companies, restore updated ones. */
